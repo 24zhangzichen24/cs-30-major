@@ -1,25 +1,24 @@
-# Major Project Proposal
+# Large Project Proposal
 
-## Description
+## Project Description
 
-- a roguelike card-based turn-based game plagiarizes the gameplay of Slay the Spire.
-- Players progress through the map, and upon entering a battle, they defeat monsters by drawing cards, playing cards, consuming energy, and ending their turn. After the battle, players obtain new cards, gold coins, relics, or recovery items, gradually building their own deck and ultimately challenging the Boss.
+- A card-based turn-based roguelike game, its gameplay inspired by Slay the Spire.
 
-## Needs To Have
+- Players progress through the map, entering battles to defeat monsters by drawing cards, playing cards, consuming energy, and ending their turn. After each battle, players acquire new cards, gold, relics, or recovery items, gradually building their deck to ultimately challenge the Boss.
 
-- a procedurally generated dungeon divided into rooms
-- levels large enough to be explored that don't fit entirely in screen
-- real time combat
-- progressively more difficult dungeon levels
-- sound effects
-- music
-- basic enemy movement in a straight line
+## Essential Features
 
-## Nice To Have
+- Different game pages (map, battle, events)
+- Procedurally generated map divided into different rooms
+- Random shuffling, with ordered draw and discard piles
+- Special buffs and debuffs besides attack and defense
+- Basic player actions (health loss, attack, idle)
+- Different monsters
+- Sound effects
+- Music
 
-- dynamic lighting
-- improved enemy AI / pathfinding
-- satisying screenshake
-- decent looking graphics
-- updated and more interesting generated room shapes
-- multiple unique weapons and enemies
+## Bonus Features
+
+- Monster animations
+- Card draw and play animations
+- Clear UI
