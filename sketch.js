@@ -1,12 +1,12 @@
 let cards = [];
-let numberOfCards = 15;
+let numberOfCards = 17;
 let numberOfDrawing_round = 6;
 let numberOfHolding = 0;
-let cardWidth = 50;
-let cardHeight = 70;
+let cardsize = 60;
 let drawCardsPile = [];
 let holdCards = [];
 let foldCardsPile = [];
+let ifDragging = false;
 
 
 function setup() {
@@ -14,9 +14,12 @@ function setup() {
   
   for (let i = 0; i < numberOfCards; i++) {
     cards.push({
+      x: 0,
+      y: 0,
       number: i + 1,
       rarity: random(['common', 'rare', 'legendary']),
       category: random(['attack', 'skill', 'ability']),
+      ifBeingDragged: false
     });
     
     // At the start of the game, the cards are shuffled into the draw pile in a random order.
@@ -42,27 +45,38 @@ function draw() {
   
   // Display the cards in the player's hand
   for (let i = 0; i < holdCards.length; i++) {
-    displayCards(holdCards[i], i);
+    displayCards(holdCards[i], i, ifDragging);
   }
+
+  // Display the number of cards in the draw pile and discard pile
+  fill(255);
+  textSize(16);
+  textAlign(LEFT, TOP);
+  text(`Draw Pile: ${drawCardsPile.length}`, 10, 10);
+  text(`Discard Pile: ${foldCardsPile.length}`, 10, 30);
 }
 
 
 // displays one card on the screen based on its position in the player's hand.
-function displayCards(card, index) {
+function displayCards(card, index, ifDragging = false) {
+  let cardWidth = cardsize;
+  let cardHeight = cardsize * 1.5;
   let totalWidth = holdCards.length * cardWidth + (holdCards.length - 1) * 10;
   let startX = width / 2 - totalWidth / 2;
-  let cardX = startX + index * (cardWidth + 10);
-  let cardY = height / 2 - cardHeight / 2;
+  if (!ifDragging) {
+    card.x = startX + index * (cardWidth + 10);
+    card.y = height / 2 - cardHeight / 2;
+  }
 
   fill(255);
-  rect(cardX, cardY, cardWidth, cardHeight);
+  rect(card.x, card.y, cardWidth, cardHeight);
 
   textAlign(CENTER, CENTER);
   fill(0);
   textSize(12);
-  text(`${card.number}`, cardX + cardWidth / 2, cardY + cardHeight / 4);
-  text(`${card.rarity}`, cardX + cardWidth / 2, cardY + cardHeight / 2);
-  text(`${card.category}`, cardX + cardWidth / 2, cardY + 3 * cardHeight / 4);  
+  text(`${card.number}`, card.x + cardWidth / 2, card.y + cardHeight / 4);
+  text(`${card.rarity}`, card.x + cardWidth / 2, card.y + cardHeight / 2);
+  text(`${card.category}`, card.x + cardWidth / 2, card.y + 3 * cardHeight / 4);  
 }
 
 
@@ -72,7 +86,8 @@ function drawingCards(num) {
     if (drawCardsPile.length > 0) {
       let drawnCard = drawCardsPile.pop();
       holdCards.push(drawnCard);
-    } else {
+    } 
+    else {
       if (foldCardsPile.length > 0) {
         drawCardsPile = foldCardsPile;
         foldCardsPile = [];
@@ -100,12 +115,59 @@ function foldingCards(index) {
   numberOfHolding--;
 }
 
+function mousePressed() {
+  // Check if the mouse is dragging a card
+  for (let i = holdCards.length - 1; i >= 0; i--) {
+    if (ifTouchingCard(holdCards[i])) {
+      ifDragging = true;
+      holdCards[i].ifBeingDragged = true;
+      holdCards[i].x = mouseX - cardsize / 2;
+      holdCards[i].y = mouseY - cardsize * 1.5 / 2;
+      console.log(`Dragging card ${holdCards[i].number}`);
+      break; // Stop checking after the first card is found
+    }
+  }
+}
+
+function mouseDragged() {
+  if (ifDragging) {
+    for (let i = holdCards.length - 1; i >= 0; i--) {
+      if (holdCards[i].ifBeingDragged) {
+        holdCards[i].x = pmouseX - cardsize / 2;
+        holdCards[i].y = pmouseY - cardsize * 1.5 / 2;
+        break; // Stop checking after the first card is found
+      }
+    }
+  }
+}
+
+function mouseReleased() {
+  ifDragging = false;
+  for (let i = holdCards.length - 1; i >= 0; i--) {
+    holdCards[i].ifBeingDragged = false;
+    if (holdCards[i].x < width*0.8 && holdCards[i].x + cardsize > width*0.2
+      && holdCards[i].y < height*0.3) {
+      foldingCards(i);
+    }
+  }
+  
+}
+
+
+function ifTouchingCard(card) {
+  // Check if the mouse is within the bounds of the card
+  return mouseX > card.x && 
+  mouseX < card.x + cardsize && 
+  mouseY > card.y && 
+  mouseY < card.y + cardsize * 1.5;
+}
+
 function keyPressed() {
   if (key === 'e' || key === 'E') {
     for (let i = numberOfHolding - 1; i >= 0; i--) {
       foldingCards(i);
     }
-    drawingCards();
+    drawingCards(numberOfDrawing_round);
   }
 }
 
