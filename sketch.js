@@ -9,19 +9,53 @@ let foldCardsPile = [];
 let ifDragging = false;
 
 
+class Card {
+  constructor(number) {
+    this.number = number;
+    this.rarity = random(['common', 'rare', 'legendary']);
+    this.category = random(['attack', 'skill', 'ability']);
+    this.x = 0;
+    this.y = 0;
+    this.ifBeingDragged = false;
+    this.size = 60;
+  }
+
+
+  display() {
+    fill(255);
+    rect(this.x, this.y, cardsize, cardsize * 1.5);
+    textAlign(CENTER, CENTER);
+    fill(0);
+    textSize(12);
+    text(`${this.number}`, this.x + cardWidth / 2, this.y + cardHeight / 4);
+    text(`${this.rarity}`, this.x + cardWidth / 2, this.y + cardHeight / 2);
+    text(`${this.category}`, this.x + cardWidth / 2, this.y + 3 * cardHeight / 4); 
+  }
+
+  update(){
+    this.adjustSizeBasedOnMouse();
+  }
+
+  adjustSizeBasedOnMouse(){
+    let mouseDistance = dist(mouseX,mouseY,this.x,this.y);
+    if (ifTouchingCard){
+      let theSize = map(mouseDistance, 0, this.reach, this.maxRadius, this.minRadius);
+      this.radius = theSize;
+    }
+    else{
+      this.radius = this.minRadius;
+    }
+  }
+}
+
+
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   
   for (let i = 0; i < numberOfCards; i++) {
-    cards.push({
-      x: 0,
-      y: 0,
-      number: i + 1,
-      rarity: random(['common', 'rare', 'legendary']),
-      category: random(['attack', 'skill', 'ability']),
-      ifBeingDragged: false
-    });
-    
+    let card = new Card(i+1);
+    cards.push(card);
     // At the start of the game, the cards are shuffled into the draw pile in a random order.
     drawCardsPile.push(cards[i]);
   }
@@ -51,9 +85,10 @@ function draw() {
   // Display the number of cards in the draw pile and discard pile
   fill(255);
   textSize(16);
-  textAlign(LEFT, TOP);
-  text(`Draw Pile: ${drawCardsPile.length}`, 10, 10);
-  text(`Discard Pile: ${foldCardsPile.length}`, 10, 30);
+  textAlign(LEFT, BOTTOM);
+  text(`Draw Pile: ${drawCardsPile.length}`, 10, height-10);
+  textAlign(RIGHT, BOTTOM);
+  text(`Discard Pile: ${foldCardsPile.length}`, width-10, height-10);
 }
 
 
@@ -140,6 +175,7 @@ function mouseDragged() {
     }
   }
 }
+
 
 function mouseReleased() {
   ifDragging = false;
