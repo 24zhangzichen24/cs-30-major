@@ -8,6 +8,11 @@ let holdCards = [];
 let foldCardsPile = [];
 let ifDragging = false;
 
+let discardPilePositionX;
+let discardPilePositionY;
+let drawPilePositionX;
+let drawPilePositionY;
+
 
 class Card {
   constructor(number) {
@@ -46,12 +51,29 @@ class Card {
       this.radius = this.minRadius;
     }
   }
+
+  foldingAnime(){
+    let t = 0;
+    // change this.x and this.y to Discard position by a quadratic function
+    while(t < 120){
+      this.x += (discardPilePositionX - this.x) / 120;
+      this.y += (discardPilePositionY - this.y) / 120;
+      t++;
+      console.log(this.x, this.y);
+    }
+
+  }
 }
 
 
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+
+  discardPilePositionX = width-10;
+  discardPilePositionY = height-10;
+  drawPilePositionX = 10;
+  drawPilePositionY = height-10;
   
   for (let i = 0; i < numberOfCards; i++) {
     let card = new Card(i+1);
@@ -86,9 +108,9 @@ function draw() {
   fill(255);
   textSize(16);
   textAlign(LEFT, BOTTOM);
-  text(`Draw Pile: ${drawCardsPile.length}`, 10, height-10);
+  text(`Draw Pile: ${drawCardsPile.length}`, drawPilePositionX, drawPilePositionY);
   textAlign(RIGHT, BOTTOM);
-  text(`Discard Pile: ${foldCardsPile.length}`, width-10, height-10);
+  text(`Discard Pile: ${foldCardsPile.length}`, discardPilePositionX, discardPilePositionY);
 }
 
 
@@ -138,13 +160,11 @@ function drawingCards(num) {
 }
 
 
-function useCards() {
-  numberOfHolding = holdCards.length;
-}
 
 
 // This function cards in the player's hand into the discard pile.
 function foldingCards(index) {
+  holdCards[index].foldingAnime();
   foldCardsPile.push(holdCards[index]);
   holdCards.splice(index, 1);
   numberOfHolding--;
@@ -206,6 +226,8 @@ function keyPressed() {
     drawingCards(numberOfDrawing_round);
   }
 }
+
+
 
 
 function windowResized() {
