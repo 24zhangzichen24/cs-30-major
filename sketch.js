@@ -242,6 +242,12 @@ function mouseDragged() {
       if (holdCards[i].ifBeingDragged) {
         holdCards[i].x = pmouseX - holdCards[i].size / 2;
         holdCards[i].y = pmouseY - holdCards[i].size * 1.5 / 2;
+        if (holdCards[i].x < width*0.8 && holdCards[i].x + holdCards[i].size > width*0.2
+          && holdCards[i].y < height*0.3) {
+          stroke(255, 0, 0);
+          noFill();
+          rect(width*0.2, 0, width*0.6, height*0.3);
+        }
         break; // Stop checking after the first card is found
       }
     }
@@ -284,7 +290,6 @@ function keyPressed() {
 
   // end a combat for test
   if (key === 'w' || key === 'W'){
-
   }
 }
 
