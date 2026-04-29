@@ -39,26 +39,35 @@ class Card {
     this.x = 0;
     this.y = 0;
     this.ifBeingDragged = false;
+    this.ifCanBePlayed = false;
     this.size = 60;
+    this.reach = 200; // The distance at which the card starts to enlarge
+    this.maxSize = 80;
+    this.minSize = 60;
   }
 
 
-  displayACard(index, ifDragging = false) {
+  displayACard(index, x, y, ifDragging = false) {
     let startX = (width - (holdCards.length * (this.size + 10) - 10)) / 2;
     if (!ifDragging) {
       this.x = startX + index * (this.size + 10);
       this.y = height - this.size - 90;
     }
 
-    fill(255);
-    rect(this.x, this.y, this.size, this.size * 1.5);
+    fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
+    stroke(this.ifBeingDragged ? 'gold' : 'black');
+    strokeWeight(this.ifBeingDragged && this.ifCanBePlayed ? 5 : 1);
+    
+    rect(x, y, this.size, this.size * 1.5);
+    noStroke(); 
 
     textAlign(CENTER, CENTER);
     fill(0);
     textSize(12);
-    text(`${this.number}`, this.x + this.size / 2, this.y + this.size * 1.5 / 4);
-    text(`${this.rarity}`, this.x + this.size / 2, this.y + this.size * 1.5 / 2);
-    text(`${this.category}`, this.x + this.size / 2, this.y + 3 * this.size * 1.5 / 4);  
+    text(`${this.number}`, x + this.size / 2, y + this.size * 1.5 / 4);
+    text(`${this.rarity}`, x + this.size / 2, y + this.size * 1.5 / 2);
+    text(`${this.category}`, x + this.size / 2, y + 3 * this.size * 1.5 / 4); 
+
   }
 
   update(){
@@ -67,12 +76,12 @@ class Card {
 
   adjustSizeBasedOnMouse(){
     let mouseDistance = dist(mouseX,mouseY,this.x,this.y);
-    if (ifTouchingCard){
-      let theSize = map(mouseDistance, 0, this.reach, this.maxRadius, this.minRadius);
-      this.radius = theSize;
+    if (ifTouchingCard && mouseDistance < this.reach) {
+      let theSize = map(mouseDistance, 0, this.reach, this.maxSize, this.minSize);
+      this.size = theSize;
     }
     else{
-      this.radius = this.minRadius;
+      this.size = this.minSize;
     }
   }
 
@@ -89,6 +98,12 @@ class Card {
   // }
 }
 
+class enemy {
+  constructor(){
+    this.hp = null;
+    this.image = null; // Placeholder for enemy image
+  }
+}
 
 
 function setup() {
@@ -125,11 +140,19 @@ function draw() {
   // Display the number of cards in the draw pile and discard pile
   partOfText();
   for (let i = 0; i < holdCards.length; i++) {
-    holdCards[i].displayACard(i, ifDragging);
+    holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifDragging);
+    holdCards[i].update();
   }
   if (gamemode === 'map') {
     drawMap();
   }
+  if (gamemode === 'checkdiscardPile') {
+    displayDiscardPile();
+  }
+  if (gamemode === 'checkdrawPile') {
+    displayDrawPile();
+  }
+
   fill(150);
   rect(0, 0, width, upperPartHeight);
   imageMode(CENTER);
@@ -212,6 +235,34 @@ function drawMap() {
   }
 }
 
+function displayDiscardPile() {
+  fill(50,150);
+  rect(0, 0, width, height);
+  fill(150);
+  rect(width/2 - mapWidth/2, 0, mapWidth, height);
+  for (let i = foldCardsPile.length - 1; i >= 0; i--) {
+    foldCardsPile[i].displayACard(i, foldCardsPile[i].x, foldCardsPile[i].y, false);
+  }
+}
+
+function displayDrawPile() {
+  let count = drawCardsPile.length;
+  let rows = ceil(count / (mapWidth / 70));
+  fill(50,150);
+  rect(0, 0, width, height);
+  fill(150);
+  rect(width/2 - mapWidth/2, 0, mapWidth, height);
+  for (let i = rows; i >= 0; i--) {
+    for (let j = 0; j < mapWidth / 70; j++) {
+      let index = i * floor(mapWidth / 70) + j;
+      let x = 10 + width/2 - mapWidth/2 + j * 70;
+      let y = 10 + i * 100;
+      if (index < drawCardsPile.length) {
+        drawCardsPile[index].displayACard(index, x, y, false);
+      }
+    }
+  }
+}
 
 function mousePressed() {
   // Check if the mouse is dragging a card
@@ -234,6 +285,29 @@ function mousePressed() {
       gamemode = 'map';
     }
   }
+
+
+  if (onDiscardPile()) {
+    console.log('Clicked on discard pile');
+    if (gamemode === 'combat'){
+      gamemode = 'checkdiscardPile';
+      displayDiscardPile();
+    }
+    else {
+      gamemode = 'combat';
+    }
+  }
+  if (onDrawPile()) {
+    console.log('Clicked on draw pile');
+    if (gamemode === 'combat'){
+      gamemode = 'checkdrawPile';
+      displayDrawPile();
+    }      
+    else {
+      gamemode = 'combat';
+    }
+  }
+
 }
 
 function mouseDragged() {
@@ -244,9 +318,10 @@ function mouseDragged() {
         holdCards[i].y = pmouseY - holdCards[i].size * 1.5 / 2;
         if (holdCards[i].x < width*0.8 && holdCards[i].x + holdCards[i].size > width*0.2
           && holdCards[i].y < height*0.3) {
-          stroke(255, 0, 0);
-          noFill();
-          rect(width*0.2, 0, width*0.6, height*0.3);
+          holdCards[i].ifCanBePlayed = true;
+        }
+        else {
+          holdCards[i].ifCanBePlayed = false;
         }
         break; // Stop checking after the first card is found
       }
@@ -278,6 +353,16 @@ function ifTouchingCard(card) {
 
 function onMapSymbol() {
   return mouseX > 30 && mouseX < 70 && mouseY > 10 && mouseY < 50;
+}
+
+function onDiscardPile() {
+  return mouseX > discardPilePositionX - 20 && mouseX < discardPilePositionX + 20 &&
+         mouseY > discardPilePositionY - 20 && mouseY < discardPilePositionY + 20;
+}
+
+function onDrawPile() {
+  return mouseX > drawPilePositionX - 20 && mouseX < drawPilePositionX + 20 &&
+         mouseY > drawPilePositionY - 20 && mouseY < drawPilePositionY + 20;
 }
 
 function keyPressed() {
