@@ -138,7 +138,6 @@ function draw() {
   // Display the cards in the player's hand
   
   // Display the number of cards in the draw pile and discard pile
-  partOfText();
   for (let i = 0; i < holdCards.length; i++) {
     holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifDragging);
     holdCards[i].update();
@@ -153,6 +152,8 @@ function draw() {
     displayDrawPile();
   }
 
+  partOfText();
+  
   fill(150);
   rect(0, 0, width, upperPartHeight);
   imageMode(CENTER);
@@ -202,6 +203,7 @@ function drawingCards(num) {
 // This function cards in the player's hand into the discard pile.
 function foldingCards(index) {
   // holdCards[index].foldingAnime();
+  holdCards[index].size = holdCards[index].minSize;
   foldCardsPile.push(holdCards[index]);
   holdCards.splice(index, 1);
   numberOfHolding--;
@@ -236,12 +238,28 @@ function drawMap() {
 }
 
 function displayDiscardPile() {
+  let count = foldCardsPile.length;
+  let rows = ceil(count / (mapWidth / 70));
   fill(50,150);
   rect(0, 0, width, height);
   fill(150);
   rect(width/2 - mapWidth/2, 0, mapWidth, height);
-  for (let i = foldCardsPile.length - 1; i >= 0; i--) {
-    foldCardsPile[i].displayACard(i, foldCardsPile[i].x, foldCardsPile[i].y, false);
+  if (foldCardsPile.length === 0) {
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    fill(255);
+    text('No cards in the discard pile', width/2, height/2);
+    return;
+  }
+  for (let i = rows; i >= 0; i--) {
+    for (let j = 0; j < floor(mapWidth / 70); j++) {
+      let index = i * floor(mapWidth / 70) + j;
+      let x = 10 + width/2 - mapWidth/2 + j * 70;
+      let y = 10 + i * 100;
+      if (index < foldCardsPile.length) {
+        foldCardsPile[index].displayACard(index, x, y, false);
+      }
+    }
   }
 }
 
@@ -252,8 +270,15 @@ function displayDrawPile() {
   rect(0, 0, width, height);
   fill(150);
   rect(width/2 - mapWidth/2, 0, mapWidth, height);
+  if (drawCardsPile.length === 0) {
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    fill(255);
+    text('No cards in the draw pile', width/2, height/2);
+    return;
+  }
   for (let i = rows; i >= 0; i--) {
-    for (let j = 0; j < mapWidth / 70; j++) {
+    for (let j = 0; j < floor(mapWidth / 70); j++) {
       let index = i * floor(mapWidth / 70) + j;
       let x = 10 + width/2 - mapWidth/2 + j * 70;
       let y = 10 + i * 100;
@@ -342,6 +367,32 @@ function mouseReleased() {
   
 }
 
+function mouseWheel(event) {
+  if (gamemode === 'map') {
+    mapWidth += event.delta;
+    mapWidth = constrain(mapWidth, width*0.3, width*0.9);
+  }
+  if (gamemode === 'checkdiscardPile' || gamemode === 'checkdrawPile') {
+    // change displayed position of cards in the pile based on scroll direction
+    if (event.delta > 0) {
+      for (let i = 0; i < foldCardsPile.length; i++) {
+        foldCardsPile[i].y -= 20;
+      }
+      for (let i = 0; i < drawCardsPile.length; i++) {
+        drawCardsPile[i].y -= 20;
+      }
+    }
+    else {
+      for (let i = 0; i < foldCardsPile.length; i++) {
+        foldCardsPile[i].y += 20;
+      }
+      for (let i = 0; i < drawCardsPile.length; i++) {
+        drawCardsPile[i].y += 20;
+      }
+    }
+  }
+}
+
 
 function ifTouchingCard(card) {
   // Check if the mouse is within the bounds of the card
@@ -384,7 +435,7 @@ function setGolbalVariables(){
   drawPilePositionX = 10;
   drawPilePositionY = height-10;
   upperPartHeight = height*0.05;
-  mapWidth = width*0.6;
+  mapWidth = width*0.7;
 }
 
 
