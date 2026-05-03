@@ -1,8 +1,6 @@
 let cards = [];
 let numberOfCards = 17;
 let numberOfDrawing_round = 6;
-let numberOfHolding = 0;
-let cardsize = 60;
 let drawCardsPile = [];
 let holdCards = [];
 let foldCardsPile = [];
@@ -75,8 +73,8 @@ class Card {
   }
 
   adjustSizeBasedOnMouse(){
-    let mouseDistance = dist(mouseX,mouseY,this.x,this.y);
-    if (ifTouchingCard && mouseDistance < this.reach) {
+    let mouseDistance = dist(mouseX, mouseY, this.x, this.y);
+    if (ifTouchingCard(this) && mouseDistance < this.reach) {
       let theSize = map(mouseDistance, 0, this.reach, this.maxSize, this.minSize);
       this.size = theSize;
     }
@@ -108,8 +106,8 @@ class enemy {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  setGolbalVariables();
-  creatMap();
+  setGlobalVariables();
+  createMap();
   
   for (let i = 0; i < numberOfCards; i++) {
     let card = new Card(i+1);
@@ -127,7 +125,6 @@ function setup() {
     }
   }
 
-  numberOfHolding = holdCards.length;
 }
 
 
@@ -194,7 +191,6 @@ function drawingCards(num) {
     }
   }
 
-  numberOfHolding = holdCards.length;
 }
 
 
@@ -206,11 +202,10 @@ function foldingCards(index) {
   holdCards[index].size = holdCards[index].minSize;
   foldCardsPile.push(holdCards[index]);
   holdCards.splice(index, 1);
-  numberOfHolding--;
 }
 
-function creatMap() {
-  for (let colon = 0; colon < 5; colon++) {
+function createMap() {
+  for (let column = 0; column < 5; column++) {
     let row = [];
     for (let i = 0; i < 5; i++) {
       row.push(random(['combat', 'rest', 'shop', 'event', 'elite']));
@@ -225,14 +220,14 @@ function drawMap() {
   rect(0, 0, width, height);
   fill(150);
   rect(width/2 - mapWidth/2, 0, mapWidth, height);
-  for (let colon = 0; colon < 5; colon++) {
+  for (let column = 0; column < 5; column++) {
     for (let row = 0; row < 5; row++) {
       fill(255);
-      rect(10 + width/2 - mapWidth/2 + colon * (cellSize + mapWidth/7), row * (cellSize + height/7), cellSize, cellSize);
+      rect(10 + width/2 - mapWidth/2 + column * (cellSize + mapWidth/7), row * (cellSize + height/7), cellSize, cellSize);
       fill(0);
       textAlign(CENTER, CENTER);
       textSize(7);
-      text(mapList[colon][row], 10 + width/2 - mapWidth/2 + colon * (cellSize + mapWidth/7) + cellSize / 2, row * (cellSize + height/7) + cellSize / 2);
+      text(mapList[column][row], 10 + width/2 - mapWidth/2 + column * (cellSize + mapWidth/7) + cellSize / 2, row * (cellSize + height/7) + cellSize / 2);
     }
   }
 }
@@ -339,8 +334,8 @@ function mouseDragged() {
   if (ifDragging) {
     for (let i = holdCards.length - 1; i >= 0; i--) {
       if (holdCards[i].ifBeingDragged) {
-        holdCards[i].x = pmouseX - holdCards[i].size / 2;
-        holdCards[i].y = pmouseY - holdCards[i].size * 1.5 / 2;
+        holdCards[i].x = mouseX - holdCards[i].size / 2;
+        holdCards[i].y = mouseY - holdCards[i].size * 1.5 / 2;
         if (holdCards[i].x < width*0.8 && holdCards[i].x + holdCards[i].size > width*0.2
           && holdCards[i].y < height*0.3) {
           holdCards[i].ifCanBePlayed = true;
@@ -418,7 +413,7 @@ function onDrawPile() {
 
 function keyPressed() {
   if (key === 'e' || key === 'E') {
-    for (let i = numberOfHolding - 1; i >= 0; i--) {
+    for (let i = holdCards.length - 1; i >= 0; i--) {
       foldingCards(i);
     }
     drawingCards(numberOfDrawing_round);
@@ -429,7 +424,7 @@ function keyPressed() {
   }
 }
 
-function setGolbalVariables(){
+function setGlobalVariables(){
   discardPilePositionX = width-10;
   discardPilePositionY = height-10;
   drawPilePositionX = 10;
@@ -441,4 +436,5 @@ function setGolbalVariables(){
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  setGlobalVariables();
 }
