@@ -3,7 +3,7 @@
 // ====================
 
 
-let numberOfDrawing_round = 6;
+let numberOfDrawing_round = 5;
 
 
 let mapList = [];
@@ -17,7 +17,7 @@ let upperPartHeight;
 let mapWidth;
 
 let map_symbol;
-let gamemode = 'map'; // 'map' or 'combat'
+let gamemode = 'combat';
 
 let player = {
   hp: 80,
@@ -45,6 +45,8 @@ let starterDeck = [
   'strike',
   'strike',
   'strike',
+  'strike',
+  'defend',
   'defend',
   'defend',
   'defend',
@@ -59,7 +61,7 @@ const cardLibrary = {
     cost: 1,
     rarity: 'common',
     category: 'attack',
-    description: 'Deal 6 damage.',
+    description: 'Deal 6 damage',
     effect: {
       type: 'damage',
       value: 6
@@ -71,7 +73,7 @@ const cardLibrary = {
     cost: 1,
     rarity: 'common',
     category: 'skill',
-    description: 'Gain 5 block.',
+    description: 'Gain 5 block',
     effect: {
       type: 'block',
       value: 5
@@ -83,10 +85,10 @@ const cardLibrary = {
     cost: 2,
     rarity: 'rare',
     category: 'attack',
-    description: 'Deal 8 damage.',
+    description: 'Deal 15 damage',
     effect: {
       type: 'damage',
-      value: 8
+      value: 15
     }
   },
 
@@ -95,7 +97,7 @@ const cardLibrary = {
     cost: 1,
     rarity: 'legendary',
     category: 'ability',
-    description: 'Heal 4 HP.',
+    description: 'Heal 4 HP',
     effect: {
       type: 'heal',
       value: 4
@@ -115,6 +117,18 @@ const cardLibrary = {
   }
 };
 
+const enemyLibrary = {
+  slime: {
+    name: 'Slime',
+    hp: 30,
+    effect: {
+      type: 'attack',
+      value: 8
+    },
+    attack: 8
+  }
+};
+
 
 // ====================
 // 3. PRELOAD
@@ -126,7 +140,7 @@ function preload() {
 }
 
 function preloadCardImages() {
-   //load card images
+  //load card images
 }
 
 
@@ -164,33 +178,48 @@ class Card {
       this.x = startX + index * (this.size + 10);
       this.y = height - this.size - 90;
     }
+    else {
+      this.x = x;
+      this.y = y;
+    }
 
-    let drawX = ifDragging ? x : this.x;
-    let drawY = ifDragging ? y : this.y;
-
+    this.adjustSizeBasedOnMouse();
+    
     fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
     stroke(this.ifBeingDragged ? 'gold' : 'black');
     strokeWeight(this.ifBeingDragged && this.ifCanBePlayed ? 5 : 1);
 
-    rect(drawX, drawY, this.size, this.size * 1.5);
+    rect(this.x, this.y, this.size, this.size * 1.5);
     noStroke();
 
     textAlign(CENTER, CENTER);
     fill(0);
     textSize(10);
-    text(this.name, drawX + this.size / 2, drawY + this.size * 0.2);
-    text("Cost: " + this.cost, drawX + this.size / 2, drawY + this.size * 0.45);
-    text(this.rarity, drawX + this.size / 2, drawY + this.size * 0.7);
-    text(this.category, drawX + this.size / 2, drawY + this.size * 1.0);
-    text(this.description, drawX + this.size / 2, drawY + this.size * 1.25);
+    text(this.name, this.x + this.size / 2, this.y + this.size * 0.2);
+    text("Cost: " + this.cost, this.x + this.size / 2, this.y + this.size * 0.45);
+    text(this.rarity, this.x + this.size / 2, this.y + this.size * 0.7);
+    text(this.category, this.x + this.size / 2, this.y + this.size * 1.0);
+    text(this.description, this.x + this.size / 2, this.y + this.size * 1.25);
   }
+
+  adjustSizeBasedOnMouse() {
+    let distanceToMouse = dist(mouseX, mouseY, this.x + this.size / 2, this.y + this.size * 0.75);
+    if (distanceToMouse < this.reach) {
+      this.size = map(distanceToMouse, 0, this.reach, this.maxSize, this.minSize);
+    } 
+    else {
+      this.size = this.minSize;
+    }
+  } 
 }
 
 class Enemy {
-  constructor(hp, attack) {
-    this.hp = hp;
-    this.maxHp = hp;
-    this.attack = attack;
+  constructor(enemyId) {
+    let data = enemyLibrary[enemyId];
+
+    this.hp = data.hp;
+    this.maxHp = data.hp;
+    this.attack = data.attack;
     this.intent = 'attack';
     this.x = width / 2;
     this.y = height / 4;
@@ -221,11 +250,14 @@ function draw() {
 
   if (gamemode === 'combat') {
     drawCombatScene();
-  } else if (gamemode === 'map') {
+  } 
+  else if (gamemode === 'map') {
     drawMap();
-  } else if (gamemode === 'checkdiscardPile') {
+  } 
+  else if (gamemode === 'checkdiscardPile') {
     displayDiscardPile();
-  } else if (gamemode === 'checkdrawPile') {
+  } 
+  else if (gamemode === 'checkdrawPile') {
     displayDrawPile();
   }
 
@@ -239,7 +271,7 @@ function draw() {
 
 function startCombat() {
   enemies = [];
-  enemies.push(new Enemy(30, 8));
+  enemies.push(new Enemy('slime'));
   player.energy = 3;
   player.block = 0;
   gamemode = 'combat';
@@ -265,7 +297,8 @@ function drawingCards(num) {
     if (drawCardsPile.length > 0) {
       let drawnCard = drawCardsPile.pop();
       holdCards.push(drawnCard);
-    } else {
+    } 
+    else {
       if (foldCardsPile.length > 0) {
         drawCardsPile = foldCardsPile;
         foldCardsPile = [];
@@ -316,12 +349,15 @@ function resolveEffect(effect, target) {
         target.hp = 0;
       }
     }
-  } else if (effect.type === 'block') {
+  } 
+  else if (effect.type === 'block') {
     player.block += effect.value;
-  } else if (effect.type === 'heal') {
+  } 
+  else if (effect.type === 'heal') {
     player.hp += effect.value;
     player.hp = min(player.hp, player.maxHp);
-  } else if (effect.type === 'draw') {
+  } 
+  else if (effect.type === 'draw') {
     drawingCards(effect.value);
   }
 }
@@ -377,12 +413,15 @@ function drawEnemies() {
     fill(200, 100, 100);
     rect(enemies[i].x - 40, enemies[i].y - 40, 80, 80);
 
+    fill(255, 0, 0);
+    rect(enemies[i].x - 50, enemies[i].y + 60, 100, 20);
+
     fill(255);
     textAlign(CENTER, CENTER);
     textSize(16);
-    text("Enemy", enemies[i].x, enemies[i].y - 55);
-    text("HP: " + enemies[i].hp, enemies[i].x, enemies[i].y);
-    text("ATK: " + enemies[i].attack, enemies[i].x, enemies[i].y + 20);
+    text(enemies[i].name, enemies[i].x, enemies[i].y - 55);
+    text("HP: " + enemies[i].hp, enemies[i].x, enemies[i].y + 70); 
+    text("ATK: " + enemies[i].attack, enemies[i].x, enemies[i].y - 60 + sin(frameCount * 0.06) * 3);
   }
 }
 
@@ -474,12 +513,12 @@ function displayDiscardPile() {
     return;
   }
 
+
   for (let i = rows; i >= 0; i--) {
     for (let j = 0; j < floor(mapWidth / 70); j++) {
       let index = i * floor(mapWidth / 70) + j;
-      let x = 10 + width / 2 - mapWidth / 2 + j * 70;
+      let x = 10 + width/2 - mapWidth/2 + j * 70;
       let y = 10 + i * 100;
-
       if (index < foldCardsPile.length) {
         foldCardsPile[index].displayACard(index, x, y, false);
       }
@@ -538,7 +577,8 @@ function mousePressed() {
   if (onMapSymbol()) {
     if (gamemode === 'map') {
       startCombat();
-    } else {
+    } 
+    else {
       gamemode = 'map';
     }
   }
@@ -547,7 +587,8 @@ function mousePressed() {
     console.log('Clicked on discard pile');
     if (gamemode === 'combat') {
       gamemode = 'checkdiscardPile';
-    } else {
+    } 
+    else {
       gamemode = 'combat';
     }
   }
@@ -556,7 +597,8 @@ function mousePressed() {
     console.log('Clicked on draw pile');
     if (gamemode === 'combat') {
       gamemode = 'checkdrawPile';
-    } else {
+    } 
+    else {
       gamemode = 'combat';
     }
   }
@@ -575,7 +617,8 @@ function mouseDragged() {
           holdCards[i].y < height * 0.3
         ) {
           holdCards[i].ifCanBePlayed = true;
-        } else {
+        } 
+        else {
           holdCards[i].ifCanBePlayed = false;
         }
 
@@ -622,7 +665,8 @@ function mouseWheel(event) {
       for (let i = 0; i < drawCardsPile.length; i++) {
         drawCardsPile[i].y -= 20;
       }
-    } else {
+    } 
+    else {
       for (let i = 0; i < foldCardsPile.length; i++) {
         foldCardsPile[i].y += 20;
       }
