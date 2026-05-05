@@ -221,8 +221,8 @@ class Enemy {
     this.maxHp = data.hp;
     this.attack = data.attack;
     this.intent = 'attack';
-    this.x = width / 2;
-    this.y = height / 4;
+    this.x = width / 4 *3;
+    this.y = height / 2;
   }
 }
 
@@ -243,6 +243,7 @@ function setup() {
 
   shuffle(drawCardsPile, true);
   drawingCards(numberOfDrawing_round);
+  startCombat();
 }
 
 function draw() {
@@ -272,7 +273,6 @@ function draw() {
 function startCombat() {
   enemies = [];
   enemies.push(new Enemy('slime'));
-  player.energy = 3;
   player.block = 0;
   gamemode = 'combat';
 }
@@ -612,9 +612,7 @@ function mouseDragged() {
         holdCards[i].y = pmouseY - holdCards[i].size * 1.5 / 2;
 
         if (
-          holdCards[i].x < width * 0.8 &&
-          holdCards[i].x + holdCards[i].size > width * 0.2 &&
-          holdCards[i].y < height * 0.3
+          holdCards[i].y < height * 0.5
         ) {
           holdCards[i].ifCanBePlayed = true;
         } 
@@ -635,9 +633,7 @@ function mouseReleased() {
     holdCards[i].ifBeingDragged = false;
 
     if (
-      holdCards[i].x < width * 0.8 &&
-      holdCards[i].x + holdCards[i].size > width * 0.2 &&
-      holdCards[i].y < height * 0.3
+      holdCards[i].y < height * 0.5
     ) {
       let target = null;
 
@@ -680,6 +676,14 @@ function mouseWheel(event) {
 function keyPressed() {
   if (key === 'e' || key === 'E') {
     endTurn();
+  }
+  if (key === 'm' || key === 'M'){
+    if(gamemode === 'map'){
+      gamemode = 'combat';
+    }
+    else {
+      gamemode = 'map';
+    }
   }
 }
 
