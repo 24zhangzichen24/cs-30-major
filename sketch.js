@@ -22,7 +22,7 @@ let gamemode = 'combat';
 let player = {
   hp: 80,
   maxHp: 80,
-  energy: 3,
+  energy: 100,
   block: 0
 };
 
@@ -52,7 +52,8 @@ let starterDeck = [
   'defend',
   'defend',
   'bash',
-  'heal'
+  'heal',
+  'bashShield'
 ];
 
 const cardLibrary = {
@@ -110,7 +111,7 @@ const cardLibrary = {
     rarity: 'rare',
     category: 'attack',
     description: 'Deal 8 damage. Gain 5 block.',
-    effects: [
+    effect: [
       { type: 'damage', value: 8 },
       { type: 'block', value: 5 }
     ]
@@ -349,6 +350,7 @@ function resolveEffect(effect, target) {
         target.hp = 0;
       }
     }
+    console.log('1');
   } 
   else if (effect.type === 'block') {
     player.block += effect.value;
@@ -632,9 +634,7 @@ function mouseReleased() {
   for (let i = holdCards.length - 1; i >= 0; i--) {
     holdCards[i].ifBeingDragged = false;
 
-    if (
-      holdCards[i].y < height * 0.5
-    ) {
+    if (holdCards[i].y < height * 0.5) {
       let target = null;
 
       if (enemies.length > 0) {
