@@ -7,7 +7,7 @@ let numberOfDrawing_round = 5;
 
 
 let mapList = [];
-let ifDragging = false;
+let ifChoossing = false;
 
 let discardPilePositionX;
 let discardPilePositionY;
@@ -17,13 +17,17 @@ let upperPartHeight;
 let mapWidth;
 
 let map_symbol;
+let coin_symbol;
 let gamemode = 'combat';
 
 let player = {
   hp: 80,
   maxHp: 80,
   energy: 100,
-  block: 0
+  block: 0,
+  buff: [],
+  image: 'player.png',
+  money: 0,
 };
 
 let enemies = [];
@@ -66,7 +70,8 @@ const cardLibrary = {
     effect: {
       type: 'damage',
       value: 6
-    }
+    },
+    image: 'strike.png'
   },
 
   defend: {
@@ -78,7 +83,8 @@ const cardLibrary = {
     effect: {
       type: 'block',
       value: 5
-    }
+    },
+    image: 'defend.png'
   },
 
   bash: {
@@ -90,7 +96,8 @@ const cardLibrary = {
     effect: {
       type: 'damage',
       value: 15
-    }
+    },
+    image: 'bash.png'
   },
 
   heal: {
@@ -102,7 +109,8 @@ const cardLibrary = {
     effect: {
       type: 'heal',
       value: 4
-    }
+    },
+    image: 'heal.png'
   },
 
   bashShield: {
@@ -115,6 +123,30 @@ const cardLibrary = {
       { type: 'damage', value: 8 },
       { type: 'block', value: 5 }
     ]
+  },
+
+};
+
+const buffLibrary = {
+  strength: {
+    name: 'Strength',
+    description: 'Increases damage by 1 for each stack.',
+    image: 'strength.png',
+  },
+  dexterity: {
+    name: 'Dexterity',
+    description: 'Increases block by 1 for each stack.',
+    image: 'dexterity.png',
+  },
+  vulnerable: {
+    name: 'Vulnerable',
+    description: 'Takes 50% more damage for each stack.',
+    image: 'vulnerable.png',
+  },
+  weak: {
+    name: 'Weak',
+    description: 'Deals 25% less damage for each stack.',
+    image: 'weak.png',
   }
 };
 
@@ -126,7 +158,8 @@ const enemyLibrary = {
       type: 'attack',
       value: 8
     },
-    attack: 8
+    attack: 8,
+    image: 'slime.png',
   }
 };
 
@@ -138,6 +171,7 @@ const enemyLibrary = {
 function preload() {
   preloadCardImages();
   map_symbol = loadImage('map_symbol.png');
+  coin_symbol = loadImage('coin_symbol.png');
 }
 
 function preloadCardImages() {
@@ -160,11 +194,11 @@ class Card {
     this.category = data.category;
     this.description = data.description;
     this.effects = [data.effect];
-    
+    this.image = data.image;
 
     this.x = 0;
     this.y = 0;
-    this.ifBeingDragged = false;
+    this.ifBeingChoosed = false;
     this.ifCanBePlayed = false;
     this.size = 60;
     this.reach = 200;
@@ -172,10 +206,10 @@ class Card {
     this.minSize = 60;
   }
 
-  displayACard(index, x, y, ifDragging = false) {
+  displayACard(index, x, y, ifChoossing = false) {
     let startX = (width - (holdCards.length * (this.size + 10) - 10)) / 2;
 
-    if (!ifDragging) {
+    if (!ifChoossing && !this.ifBeingChoosed) {
       this.x = startX + index * (this.size + 10);
       this.y = height - this.size - 90;
     }
@@ -184,11 +218,13 @@ class Card {
       this.y = y;
     }
 
+
+
     this.adjustSizeBasedOnMouse();
     
     fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
-    stroke(this.ifBeingDragged ? 'gold' : 'black');
-    strokeWeight(this.ifBeingDragged && this.ifCanBePlayed ? 5 : 1);
+    stroke(this.ifBeingChoosed ? 'gold' : 'black');
+    strokeWeight(this.ifBeingChoosed && this.ifCanBePlayed ? 5 : 1);
 
     rect(this.x, this.y, this.size, this.size * 1.5);
     noStroke();
@@ -224,6 +260,7 @@ class Enemy {
     this.intent = 'attack';
     this.x = width / 4 *3;
     this.y = height / 2;
+    this.buff = [];
   }
 }
 
@@ -402,7 +439,10 @@ function drawCombatScene() {
 
 function drawHand() {
   for (let i = 0; i < holdCards.length; i++) {
-    holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifDragging);
+    holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifChoossing);
+    if (holdCards[i].ifBeingChoosed) {
+      holdCards[i].displayACard(i, mouseX - holdCards[i].size / 2, mouseY - holdCards[i].size / 2, true);
+    }
   }
 }
 
@@ -428,12 +468,18 @@ function drawEnemies() {
 }
 
 function drawPlayer() {
+  let playerX = width / 4;
+  let playerY = height / 2;
+  fill(100, 200, 100);
+  rect(playerX - 40, playerY - 40, 80, 80);
+
+
   fill(255);
   textAlign(LEFT, TOP);
   textSize(18);
-  text("Player HP: " + player.hp + "/" + player.maxHp, 20, upperPartHeight + 10);
-  text("Energy: " + player.energy, 20, upperPartHeight + 35);
-  text("Block: " + player.block, 20, upperPartHeight + 60);
+  text("Player HP: " + player.hp + "/" + player.maxHp, playerX - 40, playerY + 50);
+  text("Energy: " + player.energy, playerX - 40, playerY + 80);
+  text("Block: " + player.block, playerX - 40, playerY + 110);
 }
 
 function drawTopBar() {
@@ -443,7 +489,14 @@ function drawTopBar() {
   partOfText();
 
   imageMode(CENTER);
-  image(map_symbol, 50, 10, 40, 40);
+  image(map_symbol, 50, 13, 40, 40);
+
+
+  image(coin_symbol, 100, 13, 20, 20);
+  textAlign(LEFT, TOP);
+  textSize(16);
+  fill('gold');
+  text(player.money, 120, 5);
 }
 
 function partOfText() {
@@ -557,6 +610,18 @@ function displayDrawPile() {
       }
     }
   }
+  function drawCardPlayArrow(card) {
+    bezier(
+      card.x + card.size / 2, 
+      card.y + card.size * 0.75, 
+      mouseX, 
+      mouseY, 
+      mouseX, 
+      mouseY, 
+      mouseX, 
+      mouseY
+    );
+  }
 }
 
 
@@ -567,12 +632,33 @@ function displayDrawPile() {
 function mousePressed() {
   for (let i = holdCards.length - 1; i >= 0; i--) {
     if (ifTouchingCard(holdCards[i])) {
-      ifDragging = true;
-      holdCards[i].ifBeingDragged = true;
+      if (holdCards[i].ifBeingChoosed && ifChoossing) {
+        ifChoossing = false;
+        holdCards[i].ifBeingChoosed = false;
+      }
+      else {
+        ifChoossing = true;
+        holdCards[i].ifBeingChoosed = true;
+      }
       holdCards[i].x = mouseX - holdCards[i].size / 2;
       holdCards[i].y = mouseY - holdCards[i].size * 1.5 / 2;
-      console.log(`Dragging card ${holdCards[i].name}`);
       break;
+    }
+  }
+
+  if (ifChoossing) {
+    for (let i = 0; i < enemies.length; i++) {
+      if (mouseY < height / 2) {
+        for (let j = holdCards.length - 1; j >= 0; j--) {
+          if (holdCards[j].ifBeingChoosed) {
+            playCard(j, enemies[i]);
+            holdCards[j].ifBeingChoosed = false;
+            ifChoossing = false;
+            break;
+          }
+        }
+        break;
+      }
     }
   }
 
@@ -606,46 +692,7 @@ function mousePressed() {
   }
 }
 
-function mouseDragged() {
-  if (ifDragging) {
-    for (let i = holdCards.length - 1; i >= 0; i--) {
-      if (holdCards[i].ifBeingDragged) {
-        holdCards[i].x = pmouseX - holdCards[i].size / 2;
-        holdCards[i].y = pmouseY - holdCards[i].size * 1.5 / 2;
 
-        if (
-          holdCards[i].y < height * 0.5
-        ) {
-          holdCards[i].ifCanBePlayed = true;
-        } 
-        else {
-          holdCards[i].ifCanBePlayed = false;
-        }
-
-        break;
-      }
-    }
-  }
-}
-
-function mouseReleased() {
-  ifDragging = false;
-
-  for (let i = holdCards.length - 1; i >= 0; i--) {
-    holdCards[i].ifBeingDragged = false;
-
-    if (holdCards[i].y < height * 0.5) {
-      let target = null;
-
-      if (enemies.length > 0) {
-        target = enemies[0];
-      }
-
-      playCard(i, target);
-      break;
-    }
-  }
-}
 
 function mouseWheel(event) {
   if (gamemode === 'map') {
@@ -683,6 +730,15 @@ function keyPressed() {
     }
     else {
       gamemode = 'map';
+    }
+  }
+
+  if (key in ['1', '2', '3', '4', '5', '6', '7', '8', '9']) {
+    let index = parseInt(key) - 1;
+    if (index >= 0 && index < holdCards.length) {
+      holdCards[index].ifBeingChoosed = true;
+      holdCards[index].x = mouseX - holdCards[index].size / 2;
+      holdCards[index].y = mouseY - holdCards[index].size * 1.5 / 2;
     }
   }
 }
