@@ -206,22 +206,19 @@ class Card {
     this.minSize = 60;
   }
 
-  displayACard(index, x, y, ifChoossing = false) {
-    let startX = (width - (holdCards.length * (this.size + 10) - 10)) / 2;
-
-    if (!ifChoossing && !this.ifBeingChoosed) {
-      this.x = startX + index * (this.size + 10);
-      this.y = height - this.size - 90;
-    }
-    else {
-      this.x = x;
-      this.y = y;
-    }
-
-
-
+  update() {
     this.adjustSizeBasedOnMouse();
-    
+    if (this in holdCards) {
+      this.x = holdCards.indexOf(this) * (this.size + 10) + 10;
+      this.y = height - upperPartHeight - this.size * 1.5 - 10;
+    }
+    if (this.ifBeingChoosed) {
+      this.x = mouseX - this.size / 2;
+      this.y = mouseY - this.size * 1.5 / 2;
+    }
+  }
+
+  displayACard() { 
     fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
     stroke(this.ifBeingChoosed ? 'gold' : 'black');
     strokeWeight(this.ifBeingChoosed && this.ifCanBePlayed ? 5 : 1);
@@ -286,7 +283,7 @@ function setup() {
 
 function draw() {
   background(100);
-
+   
   if (gamemode === 'combat') {
     drawCombatScene();
   } 
@@ -439,9 +436,10 @@ function drawCombatScene() {
 
 function drawHand() {
   for (let i = 0; i < holdCards.length; i++) {
-    holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifChoossing);
+    holdCards[i].displayACard();
     if (holdCards[i].ifBeingChoosed) {
-      holdCards[i].displayACard(i, mouseX - holdCards[i].size / 2, mouseY - holdCards[i].size / 2, true);
+      holdCards[i].displayACard();
+      holdCards[i].update();
     }
   }
 }
