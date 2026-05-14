@@ -28,6 +28,7 @@ let player = {
   buff: [],
   image: 'player.png',
   money: 0,
+  buffs: []
 };
 
 let enemies = [];
@@ -124,6 +125,19 @@ const cardLibrary = {
       { type: 'block', value: 5 }
     ]
   },
+  poisionStab: {
+      name: 'Poison Stab',
+      cost: 1,
+      rarity: 'common',
+      category: 'attack',
+      description: 'Deal 4 damage. Apply 2 poison.',
+      effect: [
+        { type: 'damage', value: 4 },
+        { type: 'buff', value: { type: 'poison', stacks: 2 } }
+      ],
+      image: 'poison_stab.png'
+    }
+  },
 
 };
 
@@ -147,6 +161,64 @@ const buffLibrary = {
     name: 'Weak',
     description: 'Deals 25% less damage for each stack.',
     image: 'weak.png',
+  },
+  poision: {
+    name: 'Poison',
+    description: 'Takes damage at the start of turn for each stack. then lose 1 stack.',
+    image: 'poison.png',
+  }
+};
+
+const elementLibrary = {
+  pyro: {
+    name: 'Pyro',
+    description: 'fire element',
+    image: 'fireElement.png',
+  },
+  hydro: {
+    name: 'Hydro',
+    description: 'water element',
+    image: 'waterElement.png',
+  },
+  grass: {
+    name: 'Grass',
+    description: 'grass element',
+    image: 'grassElement.png',
+  },
+  ice: {
+    name: 'Ice',
+    description: 'ice element',
+    image: 'iceElement.png',
+  },
+  wind: {
+    name: 'Wind',
+    description: 'wind element',
+    image: 'windElement.png',
+  },
+  gyo: {
+    name: 'Gyo',
+    description: 'Earth element',
+    image: 'EarthElement.png',
+  },
+  eletricity: {
+    name: 'Eletricity',
+    description: 'eletricity element',
+    image: 'eletricityElement.png',
+  }
+};
+
+const elementReactionLibrary = {
+  pyro_hydro: {
+    name: 'Vaporize',
+    description: 'Pyro clean 1 Hydro stacks. Deal 1.5x damage. Hydro is the source, deal 2x damage and clean 2 Pyro stack.',
+  },
+  pyro_ice: {
+    name: 'Melt',
+    description: 'Pyro clean 2 Ice stacks. Deal 2x damage. Ice is the source, deal 1.5x damage and clean 1 Pyro stack.',
+  },
+  pyro_grass: {
+    name: 'combustion',
+    description: 'a special element: Burn(Pyro) create. At the end of turn if the Burn is not cleaned. Clean 1 Burn stack to deal 4 damage immediately.',
   }
 };
 
@@ -260,7 +332,7 @@ class Enemy {
     this.intent = 'attack';
     this.x = width / 4 *3;
     this.y = height / 2;
-    this.buff = [];
+    this.buffs = [];
   }
 }
 
@@ -399,6 +471,17 @@ function resolveEffect(effect, target) {
   else if (effect.type === 'draw') {
     drawingCards(effect.value);
   }
+  else if (effect.type === 'buff') {
+    if (target) {
+      let existingBuff = target.buffs.find(buff => buff.type === effect.value.type);
+      if (existingBuff) {
+        existingBuff.stacks += effect.value.stacks;
+      }
+      else {
+        target.buffs.push({ type: effect.value.type, stacks: effect.value.stacks });
+      }
+    }
+  }
 }
 
 function enemyTurn() {
@@ -452,6 +535,7 @@ function drawEnemies() {
   }
 
   for (let i = 0; i < enemies.length; i++) {
+    drawBuff(enemies[i]);
     fill(200, 100, 100);
     rect(enemies[i].x - 40, enemies[i].y - 40, 80, 80);
 
@@ -467,12 +551,23 @@ function drawEnemies() {
   }
 }
 
+function drawBuff(target) {
+  for (let i = 0; i < target.buffs.length; i++) {
+    let buff = target.buffs[i];
+    imageMode(CENTER);
+    image(loadImage(buffLibrary[buff.type].image), target.x - 40 + i * 20, target.y - 40, 15, 15);
+  }
+}
 function drawPlayer() {
   let playerX = width / 4;
   let playerY = height / 2;
   fill(100, 200, 100);
   rect(playerX - 40, playerY - 40, 80, 80);
 
+  drawBuff(player);
+
+  fill(255, 0, 0);
+  rect(playerX - 50, playerY + 60, 100, 20);
 
   fill(255);
   textAlign(LEFT, TOP);
@@ -481,6 +576,7 @@ function drawPlayer() {
   text("Energy: " + player.energy, playerX - 40, playerY + 80);
   text("Block: " + player.block, playerX - 40, playerY + 110);
 }
+
 
 function drawTopBar() {
   fill(150);

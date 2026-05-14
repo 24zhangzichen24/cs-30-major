@@ -43,11 +43,10 @@ function draw() {
     y1, 
     y2,
     mouseY, 0.99);
-  let arrowAngle = atan2(ty, tx
-  );
+  let arrowAngle = atan2(ty, tx);
   push();
   translate(mouseX, mouseY);
-  rotate(PI);
+  rotate(arrowAngle);
   image(ArrowImage,-10,-10,20,20);
   pop();
   console.log(arrowAngle);
