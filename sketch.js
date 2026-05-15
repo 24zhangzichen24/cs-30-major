@@ -68,10 +68,10 @@ const cardLibrary = {
     rarity: 'common',
     category: 'attack',
     description: 'Deal 6 damage',
-    effect: {
+    effect: [{
       type: 'damage',
       value: 6
-    },
+    }],
     image: 'strike.png'
   },
 
@@ -81,10 +81,10 @@ const cardLibrary = {
     rarity: 'common',
     category: 'skill',
     description: 'Gain 5 block',
-    effect: {
+    effect: [{
       type: 'block',
       value: 5
-    },
+    }],
     image: 'defend.png'
   },
 
@@ -94,10 +94,10 @@ const cardLibrary = {
     rarity: 'rare',
     category: 'attack',
     description: 'Deal 15 damage',
-    effect: {
+    effect: [{
       type: 'damage',
       value: 15
-    },
+    }],
     image: 'bash.png'
   },
 
@@ -107,10 +107,10 @@ const cardLibrary = {
     rarity: 'legendary',
     category: 'ability',
     description: 'Heal 4 HP',
-    effect: {
+    effect: [{
       type: 'heal',
       value: 4
-    },
+    }],
     image: 'heal.png'
   },
 
@@ -126,19 +126,18 @@ const cardLibrary = {
     ]
   },
   poisionStab: {
-      name: 'Poison Stab',
-      cost: 1,
-      rarity: 'common',
-      category: 'attack',
-      description: 'Deal 4 damage. Apply 2 poison.',
-      effect: [
-        { type: 'damage', value: 4 },
-        { type: 'buff', value: { type: 'poison', stacks: 2 } }
-      ],
-      image: 'poison_stab.png'
-    }
+    name: 'Poison Stab',
+    cost: 1,
+    rarity: 'common',
+    category: 'attack',
+    description: 'Deal 4 damage. Apply 2 poison.',
+    effect: [
+      { type: 'damage', value: 4 },
+      { type: 'buff', value: { type: 'poison', stacks: 2 } }
+    ],
+    image: 'poison_stab.png'
   },
-
+  
 };
 
 const buffLibrary = {
@@ -180,11 +179,6 @@ const elementLibrary = {
     description: 'water element',
     image: 'waterElement.png',
   },
-  grass: {
-    name: 'Grass',
-    description: 'grass element',
-    image: 'grassElement.png',
-  },
   ice: {
     name: 'Ice',
     description: 'ice element',
@@ -216,10 +210,40 @@ const elementReactionLibrary = {
     name: 'Melt',
     description: 'Pyro clean 2 Ice stacks. Deal 2x damage. Ice is the source, deal 1.5x damage and clean 1 Pyro stack.',
   },
-  pyro_grass: {
-    name: 'combustion',
-    description: 'a special element: Burn(Pyro) create. At the end of turn if the Burn is not cleaned. Clean 1 Burn stack to deal 4 damage immediately.',
+  pyro_electricity: {
+    name: 'Overload',
+    description: 'Pyro clean 1 Eletricity stacks. Deal 10 Pyro damage to every enemy.',
+  },
+  hydro_ice: {
+    name: 'Freeze',
+    description: 'a special element: Frozen create. If frozen stack reaches 5 at the start of turn, let target skip its turn.',
+  },
+  hydro_electricity: {
+    name: 'Electro-Charged',
+    description: "create a special element: Electro-Charged. At the end of turn, Electro-Charged will deal 5 damage to target and every live with Hydro.",
+  },
+  ice_electricity: {
+    name: 'Superconduct',
+    description: 'Ice clean 1 Eletricity stacks. Deal 2 Ice damage to every enemy. Give every enemy 1 weak.',
+  },
+  wind_any: {
+    name: 'diffusion',
+    description: 'Wind clean 1 stack of any element. Deal 4 element damage to every enemy.',
+  },
+  gyo_any: {
+    name: 'crystallize',
+    description: 'crate 8 block',
   }
+};
+
+const relicLibrary = {
+  redCandle: {
+    name: 'Red Candle',
+    rarity: 'common',
+    description: 'Increases fire damage by 1.',
+    image: 'red_candle.png'
+  }
+  
 };
 
 const enemyLibrary = {
