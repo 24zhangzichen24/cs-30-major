@@ -289,7 +289,7 @@ class Card {
     this.rarity = data.rarity;
     this.category = data.category;
     this.description = data.description;
-    this.effects = [data.effect];
+    this.effects = Array.isArray(data.effect) ? data.effect : [data.effect];
     this.image = data.image;
 
     this.x = 0;
@@ -350,6 +350,7 @@ class Enemy {
   constructor(enemyId) {
     let data = enemyLibrary[enemyId];
 
+    this.name = data.name;
     this.hp = data.hp;
     this.maxHp = data.hp;
     this.attack = data.attack;
@@ -459,11 +460,11 @@ function playCard(index, target) {
   let card = holdCards[index];
 
   if (!card) {
-    return;
+    return false;
   }
 
   if (player.energy < card.cost) {
-    return;
+    return false;
   }
 
   player.energy -= card.cost;
@@ -473,6 +474,7 @@ function playCard(index, target) {
   }
 
   foldingCards(index);
+  return true;
 }
 
 function resolveEffect(effect, target) {
@@ -546,9 +548,11 @@ function drawCombatScene() {
 
 function drawHand() {
   for (let i = 0; i < holdCards.length; i++) {
-    holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, ifChoossing);
     if (holdCards[i].ifBeingChoosed) {
-      holdCards[i].displayACard(i, mouseX - holdCards[i].size / 2, mouseY - holdCards[i].size / 2, true);
+      holdCards[i].displayACard(i, mouseX - holdCards[i].size / 2, mouseY - holdCards[i].size * 1.5 / 2,true);
+    } 
+    else {
+      holdCards[i].displayACard(i, holdCards[i].x, holdCards[i].y, false);
     }
   }
 }
@@ -750,38 +754,6 @@ function displayDrawPile() {
 // ====================
 
 function mousePressed() {
-  for (let i = holdCards.length - 1; i >= 0; i--) {
-    if (ifTouchingCard(holdCards[i])) {
-      if (holdCards[i].ifBeingChoosed && ifChoossing) {
-        ifChoossing = false;
-        holdCards[i].ifBeingChoosed = false;
-      }
-      else {
-        ifChoossing = true;
-        holdCards[i].ifBeingChoosed = true;
-      }
-      holdCards[i].x = mouseX - holdCards[i].size / 2;
-      holdCards[i].y = mouseY - holdCards[i].size * 1.5 / 2;
-      break;
-    }
-  }
-
-  if (ifChoossing) {
-    for (let i = 0; i < enemies.length; i++) {
-      if (mouseY < height / 2) {
-        for (let j = holdCards.length - 1; j >= 0; j--) {
-          if (holdCards[j].ifBeingChoosed) {
-            playCard(j, enemies[i]);
-            holdCards[j].ifBeingChoosed = false;
-            ifChoossing = false;
-            break;
-          }
-        }
-        break;
-      }
-    }
-  }
-
   if (onMapSymbol()) {
     if (gamemode === 'map') {
       startCombat();
@@ -789,16 +761,17 @@ function mousePressed() {
     else {
       gamemode = 'map';
     }
+    return;
   }
 
   if (onDiscardPile()) {
-    console.log('Clicked on discard pile');
     if (gamemode === 'combat') {
       gamemode = 'checkdiscardPile';
     } 
     else {
       gamemode = 'combat';
     }
+    return;
   }
 
   if (onDrawPile()) {
@@ -808,6 +781,42 @@ function mousePressed() {
     } 
     else {
       gamemode = 'combat';
+    }
+    return;
+  }
+
+  if (gamemode !== 'combat') {
+    return;
+  }
+
+  if (ifChoossing) {
+    let selectedIndex = getSelectedCardIndex();
+    let target = getEnemyAtMouse();
+
+    if (selectedIndex !== -1 && target) {
+      let wasPlayed = playCard(selectedIndex, target);
+
+      if (wasPlayed) {
+        ifChoossing = false;
+      }
+      return;
+    }
+
+    for (let i = holdCards.length - 1; i >= 0; i--) {
+      if (!holdCards[i].ifBeingChoosed && ifTouchingCard(holdCards[i])) {
+        selectCard(i);
+        return;
+      }
+    }
+
+    clearSelectedCards();
+    return;
+  }
+
+  for (let i = holdCards.length - 1; i >= 0; i--) {
+    if (ifTouchingCard(holdCards[i])) {
+      selectCard(i);
+      return;
     }
   }
 }
@@ -844,8 +853,9 @@ function keyPressed() {
   if (key === 'e' || key === 'E') {
     endTurn();
   }
-  if (key === 'm' || key === 'M'){
-    if(gamemode === 'map'){
+
+  if (key === 'm' || key === 'M') {
+    if (gamemode === 'map') {
       gamemode = 'combat';
     }
     else {
@@ -853,12 +863,11 @@ function keyPressed() {
     }
   }
 
-  if (key in ['1', '2', '3', '4', '5', '6', '7', '8', '9']) {
+  if (['1', '2', '3', '4', '5', '6', '7', '8', '9'].includes(key)) {
     let index = parseInt(key) - 1;
-    if (index >= 0 && index < holdCards.length) {
-      holdCards[index].ifBeingChoosed = true;
-      holdCards[index].x = mouseX - holdCards[index].size / 2;
-      holdCards[index].y = mouseY - holdCards[index].size * 1.5 / 2;
+
+    if (gamemode === 'combat' && index >= 0 && index < holdCards.length) {
+      selectCard(index);
     }
   }
 }
@@ -867,6 +876,49 @@ function keyPressed() {
 // ====================
 // 9. HELPER FUNCTIONS
 // ====================
+
+function clearSelectedCards() {
+  for (let i = 0; i < holdCards.length; i++) {
+    holdCards[i].ifBeingChoosed = false;
+  }
+
+  ifChoossing = false;
+}
+
+function getSelectedCardIndex() {
+  for (let i = 0; i < holdCards.length; i++) {
+    if (holdCards[i].ifBeingChoosed) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function selectCard(index) {
+  clearSelectedCards();
+
+  holdCards[index].ifBeingChoosed = true;
+  holdCards[index].x = mouseX - holdCards[index].size / 2;
+  holdCards[index].y = mouseY - holdCards[index].size * 1.5 / 2;
+  ifChoossing = true;
+}
+
+function getEnemyAtMouse() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let enemyLeft = enemies[i].x - 40;
+    let enemyRight = enemies[i].x + 40;
+    let enemyTop = enemies[i].y - 40;
+    let enemyBottom = enemies[i].y + 40;
+
+    if (mouseX > enemyLeft && mouseX < enemyRight &&
+        mouseY > enemyTop && mouseY < enemyBottom) {
+      return enemies[i];
+    }
+  }
+
+  return null;
+}
 
 function ifTouchingCard(card) {
   return mouseX > card.x &&
