@@ -396,6 +396,19 @@ function draw() {
   else if (gamemode === 'checkdrawPile') {
     displayDrawPile();
   }
+  else if (gamemode === 'PlayerDefeated') {
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    fill(255, 0, 0);
+    text("Game Over", width / 2, height / 2);
+  }
+  else if (gamemode === 'CombatWon') {
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    fill(255, 0, 0);
+    text("you won!", width / 2, height / 2);
+  }
+
 
   drawTopBar();
 }
@@ -544,6 +557,7 @@ function drawCombatScene() {
   drawPlayer();
   drawEnemies();
   drawHand();
+  checkIfCombatEnded();
 }
 
 function drawHand() {
@@ -563,19 +577,64 @@ function drawEnemies() {
   }
 
   for (let i = 0; i < enemies.length; i++) {
-    drawBuff(enemies[i]);
-    fill(200, 100, 100);
-    rect(enemies[i].x - 40, enemies[i].y - 40, 80, 80);
+    drawEnemyImage(i);
+    drawEnemyName(i);
+    drawEnemyIntent(i);
+    drawEnemyHP(i);
+    checkIfEnemyDefeated(i);
+  }
+}
 
-    fill(255, 0, 0);
-    rect(enemies[i].x - 50, enemies[i].y + 60, 100, 20);
+function drawEnemyName(index) {
+  let enemy = enemies[index];
+  textAlign(CENTER, BOTTOM);
+  if (getEnemyAtMouse()) {
+    text(enemy.name, enemy.x, enemy.y - 60);
+  }
+}
 
-    fill(255);
-    textAlign(CENTER, CENTER);
-    textSize(16);
-    text(enemies[i].name, enemies[i].x, enemies[i].y - 55);
-    text("HP: " + enemies[i].hp, enemies[i].x, enemies[i].y + 70); 
-    text("ATK: " + enemies[i].attack, enemies[i].x, enemies[i].y - 60 + sin(frameCount * 0.06) * 3);
+function drawEnemyImage(index) {
+  let enemy = enemies[index];
+  push();
+  fill(200, 100, 100);
+  rect(enemy.x - 40, enemy.y - 40, 80, 80);
+  // image(enemy.image, enemy.x, enemy.y);
+  pop();
+}
+
+function drawEnemyIntent(index) {
+  let enemy = enemies[index];
+  if (enemy.intent === 'attack') {
+    text("ATK: " + enemy.attack, enemy.x, enemy.y - 60 + sin(frameCount * 0.06) * 3);
+  }
+  else if (enemy.intent === '') {
+  }
+}
+
+function drawEnemyHP(index) {
+  let enemy = enemies[index];
+  let hpRatio = enemy.hp / enemy.maxHp;
+  let hpBarWidth = 100;
+  let hpBarHeight = 20;
+  let filledWidth = hpBarWidth * hpRatio;
+  push();
+  stroke(0);
+  fill(255, 0, 0, 0);
+  rect(enemy.x - 50, enemy.y + 60, hpBarWidth, hpBarHeight);
+  fill(255, 0, 0);
+  noStroke();
+  rect(enemy.x - 50, enemy.y + 60, filledWidth, hpBarHeight);
+  fill(255);
+  textAlign(CENTER,CENTER);
+  textSize(18);
+  text("HP: " + enemy.hp, enemy.x, enemy.y + 70);
+  pop();
+}
+
+function checkIfEnemyDefeated(index) {
+  let enemy = enemies[index];
+  if (enemy.hp <= 0) {
+    enemies.splice(index, 1);
   }
 }
 
@@ -586,6 +645,7 @@ function drawBuff(target) {
     image(loadImage(buffLibrary[buff.type].image), target.x - 40 + i * 20, target.y - 40, 15, 15);
   }
 }
+
 function drawPlayer() {
   let playerX = width / 4;
   let playerY = height / 2;
@@ -594,17 +654,51 @@ function drawPlayer() {
 
   drawBuff(player);
 
-  fill(255, 0, 0);
-  rect(playerX - 50, playerY + 60, 100, 20);
+  drawPlayerHP(playerX, playerY);
 
   fill(255);
   textAlign(LEFT, TOP);
   textSize(18);
-  text("Player HP: " + player.hp + "/" + player.maxHp, playerX - 40, playerY + 50);
-  text("Energy: " + player.energy, playerX - 40, playerY + 80);
-  text("Block: " + player.block, playerX - 40, playerY + 110);
+  text("Player HP: " + player.hp + "/" + player.maxHp, 40, 60);
+  text("Energy: " + player.energy, 40, 90);
+  text("Block: " + player.block, 40, 120  );
 }
 
+function drawPlayerHP(x, y) {
+  let hpRatio = player.hp / player.maxHp;
+  let hpBarWidth = 100;
+  let hpBarHeight = 20;
+  let filledWidth = hpBarWidth * hpRatio;
+  push();
+  stroke(0);
+  fill(255, 0, 0, 0);
+  rect(x - 50, y + 60, hpBarWidth, hpBarHeight);
+  fill(255, 0, 0);
+  noStroke();
+  rect(x - 50, y + 60, filledWidth, hpBarHeight);
+  fill(255);
+  textAlign(CENTER,CENTER);
+  textSize(18);
+  text("HP: " + player.hp, x, y + 70);
+  pop();
+}
+
+function checkIfCombatEnded() {
+  if (player.hp <= 0) {
+    gamemode = 'PlayerDefeated';
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    fill(255, 0, 0);
+    text("Game Over", width / 2, height / 2);
+  }
+  else if (enemies.length === 0) {
+    gamemode = 'CombatWon';
+    textAlign(CENTER, CENTER);
+    textSize(32);
+    fill(0, 255, 0);
+    text("Victory!", width / 2, height / 2);
+  }
+}
 
 function drawTopBar() {
   fill(150);
@@ -634,13 +728,21 @@ function partOfText() {
 }
 
 function creatMap() {
-  for (let colon = 0; colon < 5; colon++) {
-    let row = [];
-    for (let i = 0; i < 5; i++) {
-      row.push(random(['combat', 'rest', 'shop', 'event', 'elite']));
-    }
-    mapList.push(row);
-  }
+  // for (let colon = 0; colon < 5; colon++) {
+  //   let row = [];
+  //   for (let i = 0; i < 5; i++) {
+  //     row.push(random(['combat', 'rest', 'shop', 'event', 'elite']));
+  //   }
+  //   mapList.push(row);
+  // }
+
+  mapList = [
+    ['combat', 'combat', 'rest', 'combat', 'shop'],
+    ['combat', 'elite', 'event', 'combat', 'rest'],
+    ['rest', 'combat', 'combat', 'elite', 'combat'],
+    ['combat', 'event', 'rest', 'combat', 'combat'],
+    ['shop', 'combat', 'elite', 'combat', 'rest']
+  ];
 }
 
 function drawMap() {
@@ -654,22 +756,58 @@ function drawMap() {
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < 5; row++) {
-      fill(255);
-      rect(
-        10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7),
-        row * (cellSize + height / 7),
-        cellSize,
-        cellSize
-      );
+      if (mapList[colon][row] === 'combat') {
 
-      fill(0);
-      textAlign(CENTER, CENTER);
-      textSize(7);
-      text(
-        mapList[colon][row],
-        10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-        row * (cellSize + height / 7) + cellSize / 2
-      );
+        // image(loadImage('combatSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
+
+        fill(200, 0, 0);
+        rect(
+          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
+          row * (cellSize + height / 7) + cellSize / 2,
+          cellSize,
+          cellSize 
+        );
+      }
+      else if (mapList[colon][row] === 'rest') {
+
+        // image(loadImage('restSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
+
+        fill(0, 200, 0);
+        rect(
+          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
+          row * (cellSize + height / 7) + cellSize / 2,
+          cellSize,
+          cellSize
+        );
+      }
+      else if (mapList[colon][row] === 'shop') {
+        // image(loadImage('shopSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
+        fill(0, 0, 200);
+        rect(
+          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
+          row * (cellSize + height / 7) + cellSize / 2,
+          cellSize,
+          cellSize
+        );
+      }
+      else if (mapList[colon][row] === 'elite') {
+        fill(200, 0, 200);
+        rect(
+          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
+          row * (cellSize + height / 7) + cellSize / 2,
+          cellSize,
+          cellSize
+        );
+      }
+      else if (mapList[colon][row] === 'event') {
+        fill(200, 200, 0);
+        rect(
+          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
+          row * (cellSize + height / 7) + cellSize / 2,
+          cellSize,
+          cellSize
+        );
+      }
     }
   }
 }
