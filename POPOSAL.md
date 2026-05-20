@@ -8,7 +8,7 @@
 
 ## Essential Features
 
-- Different game pages (map, battle, events)
+- Different game pages (map, battle)
 - Procedurally generated map divided into different rooms
 - Random shuffling, with ordered draw and discard piles
 - Special buffs and debuffs besides attack and defense

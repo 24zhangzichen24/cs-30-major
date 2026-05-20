@@ -250,11 +250,11 @@ const enemyLibrary = {
   slime: {
     name: 'Slime',
     hp: 30,
-    effect: {
-      type: 'attack',
-      value: 8
+    intention: {
+      1: { type: 'attack', frequency: 1, value: 6 },
+      2: { type: 'buff', target: 'player', value: { type: 'strength', stacks: 1 } },
+      3: { type: 'attack', frequency: 3, value: 4 },
     },
-    attack: 8,
     image: 'slime.png',
   }
 };
@@ -353,8 +353,7 @@ class Enemy {
     this.name = data.name;
     this.hp = data.hp;
     this.maxHp = data.hp;
-    this.attack = data.attack;
-    this.intent = 'attack';
+    this.intention = data.intention;
     this.x = width / 4 *3;
     this.y = height / 2;
     this.buffs = [];
@@ -523,29 +522,38 @@ function resolveEffect(effect, target) {
   }
 }
 
+function displayDamageText(amount, target) {
+  // Implementation for displaying damage text
+}
+
 function enemyTurn() {
   if (enemies.length === 0) {
     return;
   }
 
   let enemy = enemies[0];
-  let damageToPlayer = enemy.attack - player.block;
-
-  if (damageToPlayer < 0) {
-    damageToPlayer = 0;
+  let currentIntention = enemy.intention[enemy.currentIntentionIndex];
+  if (currentIntention.type === 'attack') {
+    let damage = currentIntention.value;
+    if (player.block > 0) {
+      if (player.block >= damage) {
+        player.block -= damage;
+        damage = 0;
+      }
+      else {
+        damage -= player.block;
+        player.block = 0;
+      }
+    }
+    player.hp -= damage;
+    if (player.hp < 0) {
+      player.hp = 0;
+    }
+    displayDamageText(damage, player);
   }
-
-  player.block -= enemy.attack;
-  if (player.block < 0) {
-    player.block = 0;
+  else if (currentIntention.type === 'buff') {
+    enemy.target.buffs.push({ type: currentIntention.value.type, stacks: currentIntention.value.stacks });
   }
-
-  player.hp -= damageToPlayer;
-  if (player.hp < 0) {
-    player.hp = 0;
-  }
-}
-
 
 
 
@@ -655,6 +663,7 @@ function drawPlayer() {
   drawBuff(player);
 
   drawPlayerHP(playerX, playerY);
+  changeOfPlayerHP();
 
   fill(255);
   textAlign(LEFT, TOP);
@@ -662,6 +671,8 @@ function drawPlayer() {
   text("Player HP: " + player.hp + "/" + player.maxHp, 40, 60);
   text("Energy: " + player.energy, 40, 90);
   text("Block: " + player.block, 40, 120  );
+
+  
 }
 
 function drawPlayerHP(x, y) {
@@ -681,6 +692,10 @@ function drawPlayerHP(x, y) {
   textSize(18);
   text("HP: " + player.hp, x, y + 70);
   pop();
+}
+
+function changeOfPlayerHP() {
+  
 }
 
 function checkIfCombatEnded() {
@@ -737,12 +752,19 @@ function creatMap() {
   // }
 
   mapList = [
-    ['combat', 'combat', 'rest', 'combat', 'shop'],
-    ['combat', 'elite', 'event', 'combat', 'rest'],
-    ['rest', 'combat', 'combat', 'elite', 'combat'],
-    ['combat', 'event', 'rest', 'combat', 'combat'],
-    ['shop', 'combat', 'elite', 'combat', 'rest']
+    [['combat'], ['combat'], ['rest'], ['combat'], ['shop']],
+    [['combat'], ['elite'], ['event'], ['combat'], ['rest']],
+    [['rest'], ['combat'], ['combat'], ['elite'], ['combat']],
+    [['combat'], ['event'], ['rest'], ['combat'], ['combat']],
+    [['shop'], ['combat'], ['elite'], ['combat'], ['rest']]
   ];
+
+  for (let colon = 0; colon < 5; colon++) {
+    for (let row = 0; row < 5; row++) {
+      mapList[colon][row].push(width / 2 - mapWidth / 2 + colon * (mapWidth / 5) + 10);
+      mapList[colon][row].push(10 + row * (height / 7) + 10);
+    }
+  }
 }
 
 function drawMap() {
@@ -756,57 +778,43 @@ function drawMap() {
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < 5; row++) {
-      if (mapList[colon][row] === 'combat') {
 
-        // image(loadImage('combatSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
-
+      if (mapList[colon][row][0] === 'combat') {
+        // image(loadImage('combatSymbol.png'),mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
         fill(200, 0, 0);
-        rect(
-          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-          row * (cellSize + height / 7) + cellSize / 2,
-          cellSize,
-          cellSize 
-        );
+        rect(mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
       }
-      else if (mapList[colon][row] === 'rest') {
-
-        // image(loadImage('restSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
-
+      else if (mapList[colon][row][0] === 'rest') {
+        // image(loadImage('restSymbol.png'),mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
         fill(0, 200, 0);
-        rect(
-          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-          row * (cellSize + height / 7) + cellSize / 2,
-          cellSize,
-          cellSize
-        );
       }
-      else if (mapList[colon][row] === 'shop') {
-        // image(loadImage('shopSymbol.png'), 10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7), row * (cellSize + height / 7), cellSize, cellSize);
+      else if (mapList[colon][row][0] === 'shop') {
+        // image(loadImage('shopSymbol.png'),mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
         fill(0, 0, 200);
-        rect(
-          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-          row * (cellSize + height / 7) + cellSize / 2,
-          cellSize,
-          cellSize
-        );
       }
-      else if (mapList[colon][row] === 'elite') {
+      else if (mapList[colon][row][0] === 'elite') {
+        // image(loadImage('eliteSymbol.png'),mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
         fill(200, 0, 200);
-        rect(
-          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-          row * (cellSize + height / 7) + cellSize / 2,
-          cellSize,
-          cellSize
-        );
       }
-      else if (mapList[colon][row] === 'event') {
+      else if (mapList[colon][row][0] === 'event') {
+        // image(loadImage('eventSymbol.png'),mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
         fill(200, 200, 0);
-        rect(
-          10 + width / 2 - mapWidth / 2 + colon * (cellSize + mapWidth / 7) + cellSize / 2,
-          row * (cellSize + height / 7) + cellSize / 2,
-          cellSize,
-          cellSize
-        );
+      }
+      rect(mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
+    }
+  }
+
+  if (mapList[1][1][2] > height) {
+    for (let i = 0; i < mapList.length; i++) {
+      for (let j = 0; j < mapList[i].length; j++) {
+        mapList[i][j][2] -= 2;
+      }
+    }
+  }
+  else if (mapList[mapList.length - 1][mapList[0].length - 1][2] < 100) {
+    for (let i = 0; i < mapList.length; i++) {
+      for (let j = 0; j < mapList[i].length; j++) {
+        mapList[i][j][2] += 2;
       }
     }
   }
@@ -962,9 +970,12 @@ function mousePressed() {
 
 
 function mouseWheel(event) {
-  if (gamemode === 'map') {
-    mapWidth += event.delta;
-    mapWidth = constrain(mapWidth, width * 0.3, width * 0.9);
+  if (gamemode === 'map' && !mapCellOverEdge()) {
+    for (let colon = 0; colon < 5; colon++) {
+      for (let row = 0; row < 5; row++) {
+        mapList[colon][row][2] += event.delta;
+      }
+    }
   }
 
   if (gamemode === 'checkdiscardPile' || gamemode === 'checkdrawPile') {
@@ -1086,6 +1097,10 @@ function setGolbalVariables() {
   drawPilePositionY = height - 10;
   upperPartHeight = height * 0.05;
   mapWidth = width * 0.7;
+}
+
+function mapCellOverEdge() {
+  return mapList[1][1][2] > height || mapList[mapList.length - 1][mapList[0].length - 1][2] < 100;
 }
 
 function windowResized() {
