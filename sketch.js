@@ -1,6 +1,6 @@
-// ====================
+// ===========================================================
 // 1. GLOBAL VARIABLES
-// ====================
+// ===========================================================
 
 
 let numberOfDrawing_round = 5;
@@ -36,12 +36,15 @@ let enemies = [];
 let drawCardsPile = [];
 let holdCards = [];
 let foldCardsPile = [];
+
+let rewardOptions = [];
+let potionBag = [];
 // let exhaustPile = []; // Save this for later when you add exhaust mechanics
 
 // let turnState = 'player'; // Save this for later when enemy turn logic becomes more complete
 
 
-// ====================
+// =====================================
 // 2. CARD DATA
 // ====================
 
@@ -250,11 +253,7 @@ const enemyLibrary = {
   slime: {
     name: 'Slime',
     hp: 30,
-    intention: {
-      1: { type: 'attack', frequency: 1, value: 6 },
-      2: { type: 'buff', target: 'player', value: { type: 'strength', stacks: 1 } },
-      3: { type: 'attack', frequency: 3, value: 4 },
-    },
+    attack: 6,
     image: 'slime.png',
   }
 };
@@ -353,7 +352,8 @@ class Enemy {
     this.name = data.name;
     this.hp = data.hp;
     this.maxHp = data.hp;
-    this.intention = data.intention;
+    this.attack = data.attack;
+    this.intent = 'attack';
     this.x = width / 4 *3;
     this.y = height / 2;
     this.buffs = [];
@@ -399,13 +399,10 @@ function draw() {
     textAlign(CENTER, CENTER);
     textSize(32);
     fill(255, 0, 0);
-    text("Game Over", width / 2, height / 2);
+    text('Game Over', width / 2, height / 2);
   }
   else if (gamemode === 'CombatWon') {
-    textAlign(CENTER, CENTER);
-    textSize(32);
-    fill(255, 0, 0);
-    text("you won!", width / 2, height / 2);
+    drawRewardScreen();
   }
 
 
@@ -554,7 +551,34 @@ function enemyTurn() {
   else if (currentIntention.type === 'buff') {
     enemy.target.buffs.push({ type: currentIntention.value.type, stacks: currentIntention.value.stacks });
   }
+}
 
+function generateRewards() {
+  rewardOptions = [];
+
+  // card reward
+  let cardIds = Object.keys(cardLibrary);
+  let randomCardId = random(cardIds);
+
+  rewardOptions.push({
+    type: 'card',
+    cardId: randomCardId
+  });
+
+  // coins reward
+  rewardOptions.push({
+    type: 'coin',
+    amount: floor(random(15, 31))
+  });
+
+  // potion reward
+  rewardOptions.push({
+    type: 'potion',
+    potionId: 'healPotion',
+    name: 'Heal Potion',
+    description: 'Heal 10 HP'
+  });
+}
 
 
 // ====================
@@ -701,19 +725,13 @@ function changeOfPlayerHP() {
 function checkIfCombatEnded() {
   if (player.hp <= 0) {
     gamemode = 'PlayerDefeated';
-    textAlign(CENTER, CENTER);
-    textSize(32);
-    fill(255, 0, 0);
-    text("Game Over", width / 2, height / 2);
   }
   else if (enemies.length === 0) {
-    gamemode = 'CombatWon';
-    textAlign(CENTER, CENTER);
-    textSize(32);
-    fill(0, 255, 0);
-    text("Victory!", width / 2, height / 2);
+    generateRewards();
+    gamemode = 'reward';
   }
 }
+
 
 function drawTopBar() {
   fill(150);
@@ -894,6 +912,55 @@ function displayDrawPile() {
   }
 }
 
+function drawRewardScreen() {
+  background(60);
+
+  textAlign(CENTER, CENTER);
+  textSize(32);
+  fill(255);
+  text('Choose Your Reward', width / 2, 100);
+
+  for (let i = 0; i < rewardOptions.length; i++) {
+    let reward = rewardOptions[i];
+
+    let rewardWidth = 160;
+    let rewardHeight = 220;
+    let gap = 40;
+    let startX = width / 2 - (rewardOptions.length * rewardWidth + (rewardOptions.length - 1) * gap) / 2;
+    let x = startX + i * (rewardWidth + gap);
+    let y = height / 2 - rewardHeight / 2;
+
+    fill(220);
+    stroke(0);
+    strokeWeight(2);
+    rect(x, y, rewardWidth, rewardHeight);
+
+    fill(0);
+    noStroke();
+    textSize(18);
+
+    if (reward.type === 'card') {
+      let cardData = cardLibrary[reward.cardId];
+
+      text(cardData.name, x + rewardWidth / 2, y + 40);
+      text('Card', x + rewardWidth / 2, y + 75);
+      text('Cost: ' + cardData.cost, x + rewardWidth / 2, y + 110);
+      text(cardData.description, x + rewardWidth / 2, y + 150);
+    }
+    else if (reward.type === 'gold') {
+      text('Gold', x + rewardWidth / 2, y + 60);
+      text('+' + reward.amount, x + rewardWidth / 2, y + 110);
+    }
+    else if (reward.type === 'potion') {
+      text(reward.name, x + rewardWidth / 2, y + 60);
+      text('Potion', x + rewardWidth / 2, y + 100);
+      text(reward.description, x + rewardWidth / 2, y + 145);
+    }
+  }
+}
+
+
+
 
 // ====================
 // 8. MOUSE & KEY INTERACTIONS
@@ -907,6 +974,16 @@ function mousePressed() {
     else {
       gamemode = 'map';
     }
+    return;
+  }
+
+  if (gamemode === 'reward') {
+    let rewardIndex = getRewardIndexAtMouse();
+
+    if (rewardIndex !== -1) {
+      claimReward(rewardIndex);
+    }
+
     return;
   }
 
@@ -1101,6 +1178,45 @@ function setGolbalVariables() {
 
 function mapCellOverEdge() {
   return mapList[1][1][2] > height || mapList[mapList.length - 1][mapList[0].length - 1][2] < 100;
+}
+
+function getRewardIndexAtMouse() {
+  for (let i = 0; i < rewardOptions.length; i++) {
+    let rewardWidth = 160;
+    let rewardHeight = 220;
+    let gap = 40;
+    let startX = width / 2 - (rewardOptions.length * rewardWidth + (rewardOptions.length - 1) * gap) / 2;
+    let x = startX + i * (rewardWidth + gap);
+    let y = height / 2 - rewardHeight / 2;
+
+    if (mouseX > x && mouseX < x + rewardWidth &&
+        mouseY > y && mouseY < y + rewardHeight) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+function claimReward(index) {
+  if (index < 0 || index >= rewardOptions.length) {
+    return;
+  }
+
+  let reward = rewardOptions[index];
+
+  if (reward.type === 'card') {
+    starterDeck.push(reward.cardId);
+  }
+  else if (reward.type === 'gold') {
+    player.money += reward.amount;
+  }
+  else if (reward.type === 'potion') {
+    potionBag.push(reward);
+  }
+
+  rewardOptions = [];
+  gamemode = 'map';
 }
 
 function windowResized() {
