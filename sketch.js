@@ -28,11 +28,13 @@ let player = {
   buff: [],
   image: 'player.png',
   money: 0,
-  buffs: []
+  buffs: [],
+  poisionOnMap : {x : 0, y : 0, stacks : 0},
 };
 
 let enemies = [];
 
+let deck = [];
 let drawCardsPile = [];
 let holdCards = [];
 let foldCardsPile = [];
@@ -369,14 +371,8 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
   setGolbalVariables();
   creatMap();
+  deck = starterDeck.slice();
 
-  for (let i = 0; i < starterDeck.length; i++) {
-    let card = new Card(starterDeck[i]);
-    drawCardsPile.push(card);
-  }
-
-  shuffle(drawCardsPile, true);
-  drawingCards(numberOfDrawing_round);
   startCombat();
 }
 
@@ -415,10 +411,23 @@ function draw() {
 // ====================
 
 function startCombat() {
+  drawCardsPile = [];
+  holdCards = [];
+  foldCardsPile=[];
+
+  for (let i = 0; i < deck.length; i++) {
+    let card = new Card(deck[i]);
+    drawCardsPile.push(card);
+  }
+
+  shuffle(drawCardsPile, true);
+  drawingCards(numberOfDrawing_round);
+
   enemies = [];
   enemies.push(new Enemy('slime'));
   player.block = 0;
   gamemode = 'combat';
+  
 }
 
 function startTurn() {
@@ -744,6 +753,9 @@ function drawTopBar() {
   textSize(16);
   fill('gold');
   text(player.money, 120, 5);
+
+  textAlign(RIGHT, TOP);
+  text(deck.length, width - 40, 5);
 }
 
 function partOfText() {
@@ -817,6 +829,20 @@ function drawMap() {
       rect(mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
     }
   }
+
+  // , creating a path to move on
+  for (let row = 0; row < 4; row++) {
+    for (let colon = 0; colon < 5; colon++) {
+      push();
+      if (random() < 0.5) {
+        stroke(255);
+        strokeWeight(4);
+        line(mapList[colon][row][1] + cellSize / 2, mapList[colon][row][2] + cellSize / 2, mapList[colon][row + 1][1] + cellSize / 2, mapList[colon][row + 1][2] + cellSize / 2);
+      }
+      pop();
+    }
+  }
+
 
   if (mapList[1][1][2] > height) {
     for (let i = 0; i < mapList.length; i++) {
@@ -893,18 +919,6 @@ function displayDrawPile() {
         drawCardsPile[index].displayACard(index, x, y, false);
       }
     }
-  }
-  function drawCardPlayArrow(card) {
-    bezier(
-      card.x + card.size / 2, 
-      card.y + card.size * 0.75, 
-      mouseX, 
-      mouseY, 
-      mouseX, 
-      mouseY, 
-      mouseX, 
-      mouseY
-    );
   }
 }
 
@@ -1202,7 +1216,7 @@ function claimReward(index) {
   let reward = rewardOptions[index];
 
   if (reward.type === 'card') {
-    starterDeck.push(reward.cardId);
+    deck.push(reward.cardId);
   }
   else if (reward.type === 'gold') {
     player.money += reward.amount;
