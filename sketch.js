@@ -401,7 +401,7 @@ function draw() {
     fill(255, 0, 0);
     text('Game Over', width / 2, height / 2);
   }
-  else if (gamemode === 'CombatWon') {
+  else if (gamemode === 'reward') {
     drawRewardScreen();
   }
 
@@ -529,28 +529,24 @@ function enemyTurn() {
   }
 
   let enemy = enemies[0];
-  let currentIntention = enemy.intention[enemy.currentIntentionIndex];
-  if (currentIntention.type === 'attack') {
-    let damage = currentIntention.value;
-    if (player.block > 0) {
-      if (player.block >= damage) {
-        player.block -= damage;
-        damage = 0;
-      }
-      else {
-        damage -= player.block;
-        player.block = 0;
-      }
-    }
-    player.hp -= damage;
-    if (player.hp < 0) {
-      player.hp = 0;
-    }
-    displayDamageText(damage, player);
+  let damage = enemy.attack;
+
+  if (player.block >= damage) {
+    player.block -= damage;
+    damage = 0;
   }
-  else if (currentIntention.type === 'buff') {
-    enemy.target.buffs.push({ type: currentIntention.value.type, stacks: currentIntention.value.stacks });
+  else {
+    damage -= player.block;
+    player.block = 0;
   }
+
+  player.hp -= damage;
+
+  if (player.hp < 0) {
+    player.hp = 0;
+  }
+
+  displayDamageText(damage, player);
 }
 
 function generateRewards() {
@@ -947,8 +943,8 @@ function drawRewardScreen() {
       text('Cost: ' + cardData.cost, x + rewardWidth / 2, y + 110);
       text(cardData.description, x + rewardWidth / 2, y + 150);
     }
-    else if (reward.type === 'gold') {
-      text('Gold', x + rewardWidth / 2, y + 60);
+    else if (reward.type === 'coin') {
+      text('Coin', x + rewardWidth / 2, y + 60);
       text('+' + reward.amount, x + rewardWidth / 2, y + 110);
     }
     else if (reward.type === 'potion') {
