@@ -785,10 +785,30 @@ function creatMap() {
     [['shop'], ['combat'], ['elite'], ['combat'], ['rest']]
   ];
 
+  // map coordinates
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < 5; row++) {
       mapList[colon][row].push(width / 2 - mapWidth / 2 + colon * (mapWidth / 5) + 10);
       mapList[colon][row].push(10 + row * (height / 7) + 10);
+    }
+  }
+
+  // map paths
+  for (let colon = 0; colon < 5; colon++) {
+    for (let row = 0; row < 5; row++) {
+      if (colon < 4) {
+        let path = [];
+        if (random() < 0.5) {
+          path.push(0); // up
+        }
+        else if (random() < 0.5) {
+          path.push(1); // right-up
+        }
+        else {
+          path.push(-1); // left-up
+        }
+        mapList[colon][row].push(path);
+      }
     }
   }
 }
@@ -802,6 +822,7 @@ function drawMap() {
   fill(150);
   rect(width / 2 - mapWidth / 2, 0, mapWidth, height);
 
+  // draw map symbols
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < 5; row++) {
 
@@ -829,18 +850,20 @@ function drawMap() {
       rect(mapList[colon][row][1], mapList[colon][row][2], cellSize, cellSize);
     }
   }
-
-  // , creating a path to move on
-  for (let row = 0; row < 4; row++) {
-    for (let colon = 0; colon < 5; colon++) {
-      push();
-      if (random() < 0.5) {
-        stroke(255);
-        strokeWeight(4);
-        line(mapList[colon][row][1] + cellSize / 2, mapList[colon][row][2] + cellSize / 2, mapList[colon][row + 1][1] + cellSize / 2, mapList[colon][row + 1][2] + cellSize / 2);
+  // draw paths
+  stroke(255);
+  strokeWeight(2);
+  for (let colon = 0; colon < 5; colon++) {
+    for (let row = 0; row < 5; row++) {
+      let paths = mapList[colon][row][3];
+      for (let i = 0; i < paths.length; i++) {
+        let nextColon = colon + paths[i];
+        let nextRow = row + 1;
+        if (nextRow >= 0 && nextRow < 5) {
+          line(mapList[colon][row][1] + cellSize / 2, mapList[colon][row][2] + cellSize / 2, mapList[nextColon][nextRow][1] + cellSize / 2, mapList[nextColon][nextRow][2] + cellSize / 2);
+        }
       }
-      pop();
-    }
+    }  
   }
 
 
