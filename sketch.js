@@ -11,12 +11,15 @@ let currentMapColon = -1;
 let currentMapRow = -1;
 let ifChoossing = false;
 
+
 let discardPilePositionX;
 let discardPilePositionY;
 let drawPilePositionX;
 let drawPilePositionY;
 let upperPartHeight;
 let mapWidth;
+const MAPROW = 10;
+const MAPCOLON = 5;
 
 let map_symbol;
 let coin_symbol;
@@ -509,7 +512,7 @@ function resolveEffect(effect, target) {
         target.hp = 0;
       }
     }
-    console.log('1');
+
   } 
   else if (effect.type === 'block') {
     player.block += effect.value;
@@ -773,12 +776,13 @@ function partOfText() {
 }
 
 function creatMap() {
+  // [kind][x][y][path]
   mapList = [
-    [['combat'], ['combat'], ['rest'], ['combat'], ['shop']],
-    [['combat'], ['elite'], ['event'], ['combat'], ['rest']],
-    [['rest'], ['combat'], ['combat'], ['elite'], ['combat']],
-    [['combat'], ['event'], ['rest'], ['combat'], ['combat']],
-    [['shop'], ['combat'], ['elite'], ['combat'], ['rest']]
+    [['combat'], ['combat'], ['rest'], ['combat'], ['shop'],['combat'], ['combat'], ['rest'], ['combat'], ['shop']],
+    [['combat'], ['elite'], ['event'], ['combat'], ['rest'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
+    [['rest'], ['combat'], ['combat'], ['elite'], ['combat'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
+    [['combat'], ['event'], ['rest'], ['combat'], ['combat'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
+    [['shop'], ['combat'], ['elite'], ['combat'], ['rest',], ['combat'], ['rest'], ['combat'], ['shop'],['combat']]
   ];
 
   let startX = width / 2 - mapWidth / 2 + 40;
@@ -789,10 +793,10 @@ function creatMap() {
 
 
   for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < 5; row++) {
+
+    for (let row = 0; row < MAPROW; row++) {
       let x = startX + colon * xGap;
       let y = startY - row * yGap;
-
       mapList[colon][row].push(x);
       mapList[colon][row].push(y);
     }
@@ -800,10 +804,10 @@ function creatMap() {
 
   
   for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < 5; row++) {
+    for (let row = 0; row < MAPROW; row++) {
       let path = [];
 
-      if (row < 4) {
+      if (row < MAPROW-1) {
         let possibleNextColons = [];
 
         possibleNextColons.push(colon);
@@ -816,16 +820,38 @@ function creatMap() {
           possibleNextColons.push(colon + 1);
         }
 
-        let nextColon = random(possibleNextColons);
-        let offset = nextColon - colon;
+        for (let i = 0; i < random(0.5,2); i++){
+          let nextColon = random(possibleNextColons);
+          let offset = nextColon - colon;
 
-        path.push(offset);
+          path.push(offset);
+        }
       }
 
-      mapList[colon][row].push(path);
+      if (row === 0){
+        continue;
+      }
+      else{
+        let possibleLastColons = [];
+
+        possibleLastColons.push(colon);
+
+        if (colon > 0) {
+          possibleLastColons.push(colon - 1);
+        }
+
+        if (colon < 4) {
+          possibleLastColons.push(colon + 1);
+        }
+
+        for (i in possibleLastColons){
+          if (!mapList[colon][row-1][3].includes(i)){
+            mapList[colon][row][3] = false;
+          }
+        }
+      }
     }
   }
-
   currentMapColon = -1;
   currentMapRow = -1;
 }
@@ -844,14 +870,14 @@ function drawMap() {
   strokeWeight(2);
 
   for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < 5; row++) {
+    for (let row = 0; row < MAPROW; row++) {
       let paths = mapList[colon][row][3];
 
       for (let i = 0; i < paths.length; i++) {
         let nextColon = colon + paths[i];
         let nextRow = row + 1;
 
-        if (nextColon >= 0 && nextColon < 5 && nextRow >= 0 && nextRow < 5) {
+        if (nextColon >= 0 && nextColon < 5 && nextRow >= 0 && nextRow < MAPROW) {
           line(
             mapList[colon][row][1] + cellSize / 2,
             mapList[colon][row][2] + cellSize / 2,
@@ -865,10 +891,17 @@ function drawMap() {
 
   // draw rooms
   for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < 5; row++) {
+    for (let row = 0; row < MAPROW; row++) {
       let roomType = mapList[colon][row][0];
       let x = mapList[colon][row][1];
       let y = mapList[colon][row][2];
+
+      if(row > 1){
+       
+        if (mapList[colon][row-1][3].length < 1){
+          continue;
+        }
+      }
 
       noStroke();
 
@@ -894,7 +927,7 @@ function drawMap() {
       if (isMapRoomClickable(colon, row)) {
         noFill();
         stroke('gold');
-        strokeWeight(4);
+        strokeWeight(3+sin(frameCount*0.05));
         rect(x - 3, y - 3, cellSize + 6, cellSize + 6);
       }
 
@@ -902,7 +935,7 @@ function drawMap() {
       if (colon === currentMapColon && row === currentMapRow) {
         noFill();
         stroke(0);
-        strokeWeight(4);
+        strokeWeight(3+sin(frameCount*0.05));
         rect(x - 6, y - 6, cellSize + 12, cellSize + 12);
       }
 
@@ -1097,7 +1130,6 @@ function mousePressed() {
   }
 
   if (onDrawPile()) {
-    console.log('Clicked on draw pile');
     if (gamemode === 'combat') {
       gamemode = 'checkdrawPile';
     } 
@@ -1148,7 +1180,7 @@ function mousePressed() {
 function mouseWheel(event) {
   if (gamemode === 'map' && !mapCellOverEdge()) {
     for (let colon = 0; colon < 5; colon++) {
-      for (let row = 0; row < 5; row++) {
+      for (let row = 0; row < MAPROW; row++) {
         mapList[colon][row][2] += event.delta;
       }
     }
@@ -1344,7 +1376,7 @@ function getMapRoomAtMouse() {
   let cellSize = 24;
 
   for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < 5; row++) {
+    for (let row = 0; row < MAPROW; row++) {
       let x = mapList[colon][row][1];
       let y = mapList[colon][row][2];
 
