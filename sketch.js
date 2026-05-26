@@ -375,7 +375,7 @@ class Enemy {
 function setup() {
   createCanvas(windowWidth, windowHeight);
   setGolbalVariables();
-  creatMap();
+  createMap();
 
   deck = starterDeck.slice();
 
@@ -775,83 +775,104 @@ function partOfText() {
   text(`Discard Pile: ${foldCardsPile.length}`, discardPilePositionX, discardPilePositionY);
 }
 
-function creatMap() {
+function createMap() {
   // [kind][x][y][path]
+    
   mapList = [
-    [['combat'], ['combat'], ['rest'], ['combat'], ['shop'],['combat'], ['combat'], ['rest'], ['combat'], ['shop']],
-    [['combat'], ['elite'], ['event'], ['combat'], ['rest'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
-    [['rest'], ['combat'], ['combat'], ['elite'], ['combat'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
-    [['combat'], ['event'], ['rest'], ['combat'], ['combat'],['combat'], ['event'], ['rest'], ['combat'], ['combat']],
-    [['shop'], ['combat'], ['elite'], ['combat'], ['rest',], ['combat'], ['rest'], ['combat'], ['shop'],['combat']]
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
   ];
 
   let startX = width / 2 - mapWidth / 2 + 40;
   let startY = height - 100;
-
   let xGap = mapWidth / 5;
   let yGap = height / 7;
 
-
-  for (let colon = 0; colon < 5; colon++) {
-
+  // 1. Assign X and Y coordinates
+  for (let col = 0; col < 5; col++) {
     for (let row = 0; row < MAPROW; row++) {
-      let x = startX + colon * xGap;
+      let x = startX + col * xGap;
       let y = startY - row * yGap;
-      mapList[colon][row].push(x);
-      mapList[colon][row].push(y);
+      mapList[col][row].push(x);
+      mapList[col][row].push(y);
     }
   }
-
-  
-  for (let colon = 0; colon < 5; colon++) {
-    for (let row = 0; row < MAPROW; row++) {
+  console.log(1);
+  // 2. Generate forward paths
+  for (let row = 0; row < MAPROW; row++) {
+    for (let col = 0; col < 5; col++) {
       let path = [];
 
-      if (row < MAPROW-1) {
-        let possibleNextColons = [];
-
-        possibleNextColons.push(colon);
-
-        if (colon > 0) {
-          possibleNextColons.push(colon - 1);
+      if (row < MAPROW - 1) {
+        let possibleNextCols = [col];
+        if (col > 0) {
+          possibleNextCols.push(col - 1);
+        }
+        if (col < 4) {
+          possibleNextCols.push(col + 1);
         }
 
-        if (colon < 4) {
-          possibleNextColons.push(colon + 1);
-        }
-
-        for (let i = 0; i < random(0.5,2); i++){
-          let nextColon = random(possibleNextColons);
-          let offset = nextColon - colon;
-
+        // FIX: Calculate the number of paths once (1 or 2 paths)
+        let numPaths = Math.floor(random(1, 3)); 
+        
+        for (let i = 0; i < numPaths; i++) {
+          let nextCol = random(possibleNextCols);
+          let offset = nextCol - col;
           path.push(offset);
         }
-      }
-
-      if (row === 0){
-        continue;
-      }
-      else{
-        let possibleLastColons = [];
-
-        possibleLastColons.push(colon);
-
-        if (colon > 0) {
-          possibleLastColons.push(colon - 1);
+        
+        // Remove duplicates if the same path was rolled twice
+        if (path.length > 1 && path[0] === path[1]) {
+          path.splice(1);
         }
-
-        if (colon < 4) {
-          possibleLastColons.push(colon + 1);
-        }
-
-        for (i in possibleLastColons){
-          if (!mapList[colon][row-1][3].includes(i)){
-            mapList[colon][row][3] = false;
-          }
-        }
+        
+        mapList[col][row][3] = path;
+        console.log(mapList[col][row][3]);
       }
     }
   }
+  console.log(2);
+  // 3. Backward validation (mark unreachable nodes)
+  for (let row = 0; row < MAPROW-1; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (row === 0){
+        continue;
+      }  // First row is always accessible
+
+      let possibleLastCols = [col];
+      if (col > 0) {
+        possibleLastCols.push(col - 1);
+      }
+      if (col < 4) {
+        possibleLastCols.push(col + 1);
+      }
+
+      let isReachable = false;
+
+      // FIX: Use 'of' to get the actual array values, not string indices
+      for (let lastCol of possibleLastCols) {
+        // Calculate the offset the parent node WOULD have taken to reach us
+        let neededOffset = col - lastCol; 
+        let parentPaths = mapList[lastCol][row - 1][3];
+
+        if (parentPaths && parentPaths.includes(neededOffset)) {
+          isReachable = true;
+          break; // We only need one path to reach us to be valid
+        }
+      }
+
+      // If no node from the previous row links to this node, mark it false
+      if (!isReachable) {
+        mapList[col][row][3] = false; 
+      }
+      console.log(mapList[col][row][3]);
+    }
+  }
+
+
   currentMapColon = -1;
   currentMapRow = -1;
 }
@@ -872,18 +893,19 @@ function drawMap() {
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
       let paths = mapList[colon][row][3];
+      if (paths){
+        for (let i = 0; i < paths.length; i++) {
+          let nextColon = colon + paths[i];
+          let nextRow = row + 1;
 
-      for (let i = 0; i < paths.length; i++) {
-        let nextColon = colon + paths[i];
-        let nextRow = row + 1;
-
-        if (nextColon >= 0 && nextColon < 5 && nextRow >= 0 && nextRow < MAPROW) {
-          line(
-            mapList[colon][row][1] + cellSize / 2,
-            mapList[colon][row][2] + cellSize / 2,
-            mapList[nextColon][nextRow][1] + cellSize / 2,
-            mapList[nextColon][nextRow][2] + cellSize / 2
-          );
+          if (nextColon >= 0 && nextColon < 5 && nextRow >= 0 && nextRow < MAPROW) {
+            line(
+              mapList[colon][row][1] + cellSize / 2,
+              mapList[colon][row][2] + cellSize / 2,
+              mapList[nextColon][nextRow][1] + cellSize / 2,
+              mapList[nextColon][nextRow][2] + cellSize / 2
+            );
+          }
         }
       }
     }
@@ -895,55 +917,57 @@ function drawMap() {
       let roomType = mapList[colon][row][0];
       let x = mapList[colon][row][1];
       let y = mapList[colon][row][2];
-
-      if(row > 1){
-       
-        if (mapList[colon][row-1][3].length < 1){
-          continue;
+      let paths = mapList[colon][row][3];
+      if (paths){
+        if(row > 1){
+        
+          if (mapList[colon][row-1][3].length < 1){
+            continue;
+          }
         }
-      }
 
-      noStroke();
+        noStroke();
 
-      if (roomType === 'combat') {
-        fill(200, 0, 0);
-      }
-      else if (roomType === 'rest') {
-        fill(0, 200, 0);
-      }
-      else if (roomType === 'shop') {
-        fill(0, 0, 200);
-      }
-      else if (roomType === 'elite') {
-        fill(200, 0, 200);
-      }
-      else if (roomType === 'event') {
-        fill(200, 200, 0);
-      }
+        if (roomType === 'combat') {
+          fill(200, 0, 0);
+        }
+        else if (roomType === 'rest') {
+          fill(0, 200, 0);
+        }
+        else if (roomType === 'shop') {
+          fill(0, 0, 200);
+        }
+        else if (roomType === 'elite') {
+          fill(200, 0, 200);
+        }
+        else if (roomType === 'event') {
+          fill(200, 200, 0);
+        }
 
-      rect(x, y, cellSize, cellSize);
+        rect(x, y, cellSize, cellSize);
 
-      // clickable room highlight
-      if (isMapRoomClickable(colon, row)) {
-        noFill();
-        stroke('gold');
-        strokeWeight(3+sin(frameCount*0.05));
-        rect(x - 3, y - 3, cellSize + 6, cellSize + 6);
+        // clickable room highlight
+        if (isMapRoomClickable(colon, row)) {
+          noFill();
+          stroke('gold');
+          strokeWeight(3+sin(frameCount*0.05));
+          rect(x - 3, y - 3, cellSize + 6, cellSize + 6);
+        }
+
+        // current player position highlight
+        if (colon === currentMapColon && row === currentMapRow) {
+          noFill();
+          stroke(0);
+          strokeWeight(3+sin(frameCount*0.05));
+          rect(x - 6, y - 6, cellSize + 12, cellSize + 12);
+        }
+
+        fill(0);
+        noStroke();
+        textAlign(CENTER, CENTER);
+        textSize(7);
+        text(roomType, x + cellSize / 2, y + cellSize / 2);
       }
-
-      // current player position highlight
-      if (colon === currentMapColon && row === currentMapRow) {
-        noFill();
-        stroke(0);
-        strokeWeight(3+sin(frameCount*0.05));
-        rect(x - 6, y - 6, cellSize + 12, cellSize + 12);
-      }
-
-      fill(0);
-      noStroke();
-      textAlign(CENTER, CENTER);
-      textSize(7);
-      text(roomType, x + cellSize / 2, y + cellSize / 2);
     }
   }
 
