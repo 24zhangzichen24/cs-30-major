@@ -10,6 +10,8 @@ let mapList = [];
 let currentMapColon = -1;
 let currentMapRow = -1;
 let ifChoossing = false;
+let ifIncombat = false;
+let presentGamemode = 'combat';
 
 
 let discardPilePositionX;
@@ -386,16 +388,20 @@ function draw() {
   background(100);
 
   if (gamemode === 'combat') {
+    presentGamemode = 'combat';
+    ifIncombat = true;
     drawCombatScene();
   } 
   else if (gamemode === 'map') {
     drawMap();
   } 
   else if (gamemode === 'checkdiscardPile') {
+    presentGamemode = 'checkdiscardPile';
     displayDiscardPile();
   } 
   else if (gamemode === 'checkdrawPile') {
     displayDrawPile();
+    presentGamemode = 'checkdrawPile';
   }
   else if (gamemode === 'PlayerDefeated') {
     textAlign(CENTER, CENTER);
@@ -404,6 +410,8 @@ function draw() {
     text('Game Over', width / 2, height / 2);
   }
   else if (gamemode === 'reward') {
+    presentGamemode = 'reward';
+    ifIncombat = false;
     drawRewardScreen();
   }
 
@@ -777,13 +785,22 @@ function partOfText() {
 
 function createMap() {
   // [kind][x][y][path]
-    
+
+  
+
+  // I PROMISE TO REMEMBER TO LOG OUT OF MY COMPUTER WHEN I FINISH MY CLASSES.
+  // OTHERWISE, PEOPLE COULD TOTALLY MESS WITH MY PROJECT(S)
+  // THAT WOULD REALLY SUCK
+
+  // YES I DO
+
+
   mapList = [
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],[random(['combat','event'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
+    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
   ];
 
   let startX = width / 2 - mapWidth / 2 + 40;
@@ -800,7 +817,7 @@ function createMap() {
       mapList[col][row].push(y);
     }
   }
-  console.log(1);
+
   // 2. Generate forward paths
   for (let row = 0; row < MAPROW; row++) {
     for (let col = 0; col < 5; col++) {
@@ -830,11 +847,9 @@ function createMap() {
         }
         
         mapList[col][row][3] = path;
-        console.log(mapList[col][row][3]);
       }
     }
   }
-  console.log(2);
   // 3. Backward validation (mark unreachable nodes)
   for (let row = 0; row < MAPROW-1; row++) {
     for (let col = 0; col < 5; col++) {
@@ -868,7 +883,6 @@ function createMap() {
       if (!isReachable) {
         mapList[col][row][3] = false; 
       }
-      console.log(mapList[col][row][3]);
     }
   }
 
@@ -971,6 +985,19 @@ function drawMap() {
     }
   }
 
+  if (mapCellOverEdge()){
+    for (let colon = 0; colon < 5; colon++) {
+      for (let row = 0; row < MAPROW; row++) {   
+        if (mapList[4][4][2] < 100){
+          mapList[colon][row][2] += 3;
+        }
+        else{
+          mapList[colon][row][2] -= 3;
+        }
+      }
+    }
+  }
+
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(18);
@@ -1063,6 +1090,38 @@ function displayDrawPile() {
   }
 }
 
+function displayCardPile() {
+  let count = deck.length;
+  let rows = ceil(count / (mapWidth / 70));
+
+  fill(50, 150);
+  rect(0, 0, width, height);
+
+  fill(150);
+  rect(width / 2 - mapWidth / 2, 0, mapWidth, height);
+
+  if (deck.length === 0) {
+    textAlign(CENTER, CENTER);
+    textSize(20);
+    fill(255);
+    text('No cards in the deck', width / 2, height / 2);
+    return;
+  }
+
+  for (let i = rows; i >= 0; i--) {
+    for (let j = 0; j < floor(mapWidth / 70); j++) {
+      let index = i * floor(mapWidth / 70) + j;
+      let x = 10 + width / 2 - mapWidth / 2 + j * 70;
+      let y = 10 + i * 100;
+
+      if (index < deck.length) {
+        deck[index].displayACard(index, x, y, false);
+      }
+    }
+  }
+
+}
+
 function drawRewardScreen() {
   background(60);
 
@@ -1119,8 +1178,14 @@ function drawRewardScreen() {
 
 function mousePressed() {
   if (onMapSymbol()) {
-    gamemode = 'map';
-    return;
+    if (gamemode !== 'map'){
+      gamemode = 'map';
+      return;
+    }
+    else {
+      gamemode = presentGamemode;
+      return;
+    }
   }
 
   if (gamemode === 'reward') {
@@ -1133,7 +1198,7 @@ function mousePressed() {
     return;
   }
 
-  if (gamemode === 'map') {
+  if (gamemode === 'map' && !ifIncombat) {
     let clickedRoom = getMapRoomAtMouse();
 
     if (clickedRoom !== null) {
@@ -1332,7 +1397,7 @@ function setGolbalVariables() {
 }
 
 function mapCellOverEdge() {
-  return mapList[1][1][2] > height || mapList[mapList.length - 1][mapList[0].length - 1][2] < 100;
+  return mapList[1][1][2] < 100  || mapList[mapList.length - 1][mapList[0].length - 1][2] > height;
 }
 
 function getRewardIndexAtMouse() {
