@@ -20,7 +20,11 @@ let drawPilePositionX;
 let drawPilePositionY;
 let upperPartHeight;
 let mapWidth;
-const MAPROW = 10;
+let skipButtonX;
+let skipButtonY;
+let skipButtonWidth;
+let skipButtonHeight;
+const MAPROW = 30;
 const MAPCOLON = 5;
 
 let map_symbol;
@@ -304,10 +308,11 @@ class Card {
     this.y = 0;
     this.ifBeingChoosed = false;
     this.ifCanBePlayed = false;
-    this.size = 60;
-    this.reach = 200;
-    this.maxSize = 80;
-    this.minSize = 60;
+    this.size = width * 0.1;
+    this.reach = width * 0.2;
+    this.maxSize = width * 0.15;
+    this.minSize = width * 0.1;
+    this.textSize = width * 0.02;
   }
 
   displayACard(index, x, y, ifChoossing = false) {
@@ -335,7 +340,7 @@ class Card {
 
     textAlign(CENTER, CENTER);
     fill(0);
-    textSize(10);
+    textSize(this.textSize);
     text(this.name, this.x + this.size / 2, this.y + this.size * 0.2);
     text("Cost: " + this.cost, this.x + this.size / 2, this.y + this.size * 0.45);
     text(this.rarity, this.x + this.size / 2, this.y + this.size * 0.7);
@@ -405,7 +410,7 @@ function draw() {
   }
   else if (gamemode === 'PlayerDefeated') {
     textAlign(CENTER, CENTER);
-    textSize(32);
+    textSize(width * 0.1);
     fill(255, 0, 0);
     text('Game Over', width / 2, height / 2);
   }
@@ -600,7 +605,9 @@ function generateRewards() {
   });
 }
 
-
+function skipButton() {
+  drawSkipButton();
+}
 // ====================
 // 7. RENDER FUNCTIONS
 // ====================
@@ -610,6 +617,7 @@ function drawCombatScene() {
   drawEnemies();
   drawHand();
   checkIfCombatEnded();
+  skipButton();
 }
 
 function drawHand() {
@@ -639,9 +647,9 @@ function drawEnemies() {
 
 function drawEnemyName(index) {
   let enemy = enemies[index];
-  textAlign(CENTER, BOTTOM);
+  textAlign(CENTER, TOP);
   if (getEnemyAtMouse()) {
-    text(enemy.name, enemy.x, enemy.y - 60);
+    text(enemy.name, enemy.x, enemy.y + height * 0.08);
   }
 }
 
@@ -666,8 +674,8 @@ function drawEnemyIntent(index) {
 function drawEnemyHP(index) {
   let enemy = enemies[index];
   let hpRatio = enemy.hp / enemy.maxHp;
-  let hpBarWidth = 100;
-  let hpBarHeight = 20;
+  let hpBarWidth = min(width * 0.003 * enemy.maxHp, width * 0.2);
+  let hpBarHeight = height * 0.03;
   let filledWidth = hpBarWidth * hpRatio;
   push();
   stroke(0);
@@ -678,7 +686,7 @@ function drawEnemyHP(index) {
   rect(enemy.x - 50, enemy.y + 60, filledWidth, hpBarHeight);
   fill(255);
   textAlign(CENTER,CENTER);
-  textSize(18);
+  textSize(height * 0.02);
   text("HP: " + enemy.hp, enemy.x, enemy.y + 70);
   pop();
 }
@@ -711,7 +719,7 @@ function drawPlayer() {
 
   fill(255);
   textAlign(LEFT, TOP);
-  textSize(18);
+  textSize(width * 0.02);
   text("Player HP: " + player.hp + "/" + player.maxHp, 40, 60);
   text("Energy: " + player.energy, 40, 90);
   text("Block: " + player.block, 40, 120  );
@@ -733,7 +741,7 @@ function drawPlayerHP(x, y) {
   rect(x - 50, y + 60, filledWidth, hpBarHeight);
   fill(255);
   textAlign(CENTER,CENTER);
-  textSize(18);
+  textSize(width * 0.02);
   text("HP: " + player.hp, x, y + 70);
   pop();
 }
@@ -765,7 +773,7 @@ function drawTopBar() {
 
   image(coin_symbol, 100, 13, 20, 20);
   textAlign(LEFT, TOP);
-  textSize(16);
+  textSize(width * 0.02);
   fill('gold');
   text(player.money, 120, 5);
 
@@ -775,7 +783,7 @@ function drawTopBar() {
 
 function partOfText() {
   fill(255);
-  textSize(16);
+  textSize(width * 0.02);
   textAlign(LEFT, BOTTOM);
   text(`Draw Pile: ${drawCardsPile.length}`, drawPilePositionX, drawPilePositionY);
 
@@ -795,13 +803,15 @@ function createMap() {
   // YES I DO
 
 
-  mapList = [
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
-    [['combat'], [random(['combat','event'])], [random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],[random(['combat','event', 'shop','rest'])],['rest']],
-  ];
+  mapList = [];
+  for (let col = 0; col < 5; col++) {
+    let column = [];
+    for (let row = 0; row < MAPROW; row++) {
+      let roomType = random(['combat', 'rest', 'shop', 'elite', 'event']);
+      column.push([roomType]);
+    }
+    mapList.push(column);
+  }
 
   let startX = width / 2 - mapWidth / 2 + 40;
   let startY = height - 100;
@@ -892,17 +902,19 @@ function createMap() {
 }
 
 function drawMap() {
-  let cellSize = 24;
+  let cellSize = min(mapWidth / 7, height / 15);
 
+  // background
   fill(50, 150);
   rect(0, 0, width, height);
 
+  // map background
   fill(150);
-  rect(width / 2 - mapWidth / 2, 0, mapWidth, height);
+  rect(width / 2 - mapWidth / 2, upperPartHeight, mapWidth, height - upperPartHeight);
 
   // draw paths 
   stroke(255);
-  strokeWeight(2);
+  strokeWeight(width * 0.005);
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
@@ -979,7 +991,7 @@ function drawMap() {
         fill(0);
         noStroke();
         textAlign(CENTER, CENTER);
-        textSize(7);
+        textSize(width * 0.01);
         text(roomType, x + cellSize / 2, y + cellSize / 2);
       }
     }
@@ -1000,7 +1012,7 @@ function drawMap() {
 
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(18);
+  textSize(width * 0.02);
   text('Map: choose a connected room on the next floor', width / 2, 50);
 }
 
@@ -1016,7 +1028,7 @@ function displayDiscardPile() {
 
   if (foldCardsPile.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(20);
+    textSize(width * 0.02);
     fill(255);
     text('No cards in the discard pile', width / 2, height / 2);
     return;
@@ -1071,7 +1083,7 @@ function displayDrawPile() {
 
   if (drawCardsPile.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(20);
+    textSize(width * 0.02);
     fill(255);
     text('No cards in the draw pile', width / 2, height / 2);
     return;
@@ -1102,7 +1114,7 @@ function displayCardPile() {
 
   if (deck.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(20);
+    textSize(width * 0.02);
     fill(255);
     text('No cards in the deck', width / 2, height / 2);
     return;
@@ -1128,26 +1140,26 @@ function drawRewardScreen() {
   textAlign(CENTER, CENTER);
   textSize(32);
   fill(255);
-  text('Choose Your Reward', width / 2, 100);
+  text('Choose Your Reward', width / 2, height / 4);
 
   for (let i = 0; i < rewardOptions.length; i++) {
     let reward = rewardOptions[i];
 
-    let rewardWidth = 160;
-    let rewardHeight = 220;
-    let gap = 40;
+    let rewardWidth = width / 4;
+    let rewardHeight = height / 3;
+    let gap = rewardWidth / 4;
     let startX = width / 2 - (rewardOptions.length * rewardWidth + (rewardOptions.length - 1) * gap) / 2;
     let x = startX + i * (rewardWidth + gap);
     let y = height / 2 - rewardHeight / 2;
 
     fill(220);
     stroke(0);
-    strokeWeight(2);
+    strokeWeight(width * 0.005);
     rect(x, y, rewardWidth, rewardHeight);
 
     fill(0);
     noStroke();
-    textSize(18);
+    textSize(width * 0.02);
 
     if (reward.type === 'card') {
       let cardData = cardLibrary[reward.cardId];
@@ -1169,7 +1181,19 @@ function drawRewardScreen() {
   }
 }
 
-
+function drawSkipButton(){
+  push();
+  fill(180);
+  stroke(0);
+  strokeWeight(width * 0.005);
+  rect(skipButtonX, skipButtonY, skipButtonWidth, skipButtonHeight, 10);
+  fill(0);
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textSize(width * 0.02);
+  text('Skip', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
+  pop();
+}
 
 
 // ====================
@@ -1394,6 +1418,10 @@ function setGolbalVariables() {
   drawPilePositionY = height - 10;
   upperPartHeight = height * 0.05;
   mapWidth = width * 0.7;
+  skipButtonX = width - width * 0.15;
+  skipButtonY = height - height * 0.1;
+  skipButtonWidth = width * 0.15;
+  skipButtonHeight = height * 0.1;
 }
 
 function mapCellOverEdge() {
@@ -1462,7 +1490,7 @@ function isMapRoomClickable(colon, row) {
 }
 
 function getMapRoomAtMouse() {
-  let cellSize = 24;
+  let cellSize = height / 10;
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
