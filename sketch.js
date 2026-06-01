@@ -3,6 +3,7 @@
 // ===========================================================
 
 
+
 let numberOfDrawing_round = 5;
 
 
@@ -52,10 +53,6 @@ let foldCardsPile = [];
 
 let rewardOptions = [];
 let potionBag = [];
-// let exhaustPile = []; // Save this for later when you add exhaust mechanics
-
-// let turnState = 'player'; // Save this for later when enemy turn logic becomes more complete
-
 
 // =====================================
 // 2. CARD DATA
@@ -265,9 +262,24 @@ const relicLibrary = {
 const enemyLibrary = {
   slime: {
     name: 'Slime',
+    kind: 'weak',
     hp: 30,
     attack: 6,
     image: 'slime.png',
+  },
+  giantSlime: {
+    name: 'Giant Slime',
+    kind: 'strong',
+    hp: 60,
+    attack: 12,
+    image: 'giant_slime.png',
+  },
+  iceTree: {
+    name: 'Ice Tree',
+    kind: 'boss',
+    hp: 100,
+    attack: 15,
+    image: 'ice_tree.png',
   }
 };
 
@@ -443,6 +455,8 @@ function startCombat() {
 
   enemies = [];
   enemies.push(new Enemy('slime'));
+  enemies.push(new Enemy('giantSlime'));
+  enemies.push(new Enemy('iceTree'));
 
   player.energy = 3;
   player.block = 0;
@@ -637,23 +651,25 @@ function drawEnemies() {
   }
 
   for (let i = 0; i < enemies.length; i++) {
-    drawEnemyImage(i);
-    drawEnemyName(i);
-    drawEnemyIntent(i);
-    drawEnemyHP(i);
-    checkIfEnemyDefeated(i);
+    let x = enemies.length === 1 ? width * 0.75 : width * 0.75 + (i - (enemies.length - 1) / 2) * 150;
+    let y = height / 2;
+    drawEnemyImage(i,x,y);
+    drawEnemyName(i,x,y);
+    drawEnemyIntent(i,x,y);
+    drawEnemyHP(i,x,y);
+    checkIfEnemyDefeated(i,x,y);
   }
 }
 
-function drawEnemyName(index) {
+function drawEnemyName(index, x, y) {
   let enemy = enemies[index];
   textAlign(CENTER, TOP);
   if (getEnemyAtMouse()) {
-    text(enemy.name, enemy.x, enemy.y + height * 0.08);
+    text(enemy.name, x, y + height * 0.08);
   }
 }
 
-function drawEnemyImage(index) {
+function drawEnemyImage(index, x, y) {
   let enemy = enemies[index];
   push();
   fill(200, 100, 100);
@@ -755,8 +771,8 @@ function checkIfCombatEnded() {
     gamemode = 'PlayerDefeated';
   }
   else if (enemies.length === 0) {
-    generateRewards();
     gamemode = 'reward';
+    generateRewards();
   }
 }
 
@@ -1191,7 +1207,7 @@ function drawSkipButton(){
   noStroke();
   textAlign(CENTER, CENTER);
   textSize(width * 0.02);
-  text('Skip', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
+  text('Skip (E)', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
   pop();
 }
 
@@ -1201,6 +1217,17 @@ function drawSkipButton(){
 // ====================
 
 function mousePressed() {
+  if (onSkipButton()) {
+    if (gamemode === 'combat') {
+      endTurn();
+      return;
+    }
+    if (gamemode === 'reward') {
+      gamemode = 'map';
+      return;
+    }
+  }
+
   if (onMapSymbol()) {
     if (gamemode !== 'map'){
       gamemode = 'map';
@@ -1321,7 +1348,12 @@ function mouseWheel(event) {
 
 function keyPressed() {
   if (key === 'e' || key === 'E') {
-    endTurn();
+    if (gamemode === 'combat') {
+      endTurn();
+    }
+    if (gamemode === 'reward') {
+      gamemode = 'map';
+    }
   }
 
   if (key === 'm' || key === 'M') {
@@ -1418,8 +1450,8 @@ function setGolbalVariables() {
   drawPilePositionY = height - 10;
   upperPartHeight = height * 0.05;
   mapWidth = width * 0.7;
-  skipButtonX = width - width * 0.15;
-  skipButtonY = height - height * 0.1;
+  skipButtonX = width - width * 0.2;
+  skipButtonY = height - height * 0.4;
   skipButtonWidth = width * 0.15;
   skipButtonHeight = height * 0.1;
 }
@@ -1508,6 +1540,11 @@ function getMapRoomAtMouse() {
   }
 
   return null;
+}
+
+function onSkipButton() {
+  return mouseX > skipButtonX && mouseX < skipButtonX + skipButtonWidth &&
+         mouseY > skipButtonY && mouseY < skipButtonY + skipButtonHeight;
 }
 
 function windowResized() {
