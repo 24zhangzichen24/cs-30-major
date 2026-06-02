@@ -25,6 +25,11 @@ let skipButtonX;
 let skipButtonY;
 let skipButtonWidth;
 let skipButtonHeight;
+
+let screenScale = 1;
+let aspectRatio = 16 / 9;
+let cardUi = {};
+
 const MAPROW = 30;
 const MAPCOLON = 5;
 
@@ -320,44 +325,62 @@ class Card {
     this.y = 0;
     this.ifBeingChoosed = false;
     this.ifCanBePlayed = false;
-    this.size = width * 0.1;
-    this.reach = width * 0.2;
-    this.maxSize = width * 0.15;
-    this.minSize = width * 0.1;
-    this.textSize = width * 0.02;
+    this.size = cardUi.cardMinSize;
+    this.reach = cardUi.cardReach;
+    this.maxSize = cardUi.cardMaxSize;
+    this.minSize = cardUi.cardMinSize;
+    this.textSize = cardUi.cardTextSize;
+  }
+
+  updateResponsiveSize() {
+    this.reach = cardUi.cardReach;
+    this.maxSize = cardUi.cardMaxSize;
+    this.minSize = cardUi.cardMinSize;
+    this.textSize = cardUi.cardTextSize;
   }
 
   displayACard(index, x, y, ifChoossing = false) {
-    let startX = (width - (holdCards.length * (this.size + 10) - 10)) / 2;
+    this.updateResponsiveSize();
+
+    let cardGap = cardUi.cardGap;
+    let cardLayoutSize = cardUi.cardMinSize;
+    let startX = (width - (holdCards.length * (cardLayoutSize + cardGap) - cardGap)) / 2;
 
     if (!ifChoossing && !this.ifBeingChoosed) {
-      this.x = startX + index * (this.size + 10);
-      this.y = height - this.size - 90;
+      this.x = startX + index * (cardLayoutSize + cardGap);
+      this.y = height - cardLayoutSize * 1.5 - cardUi.cardBottomMargin;
     }
     else {
       this.x = x;
       this.y = y;
     }
 
-
-
     this.adjustSizeBasedOnMouse();
     
     fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
     stroke(this.ifBeingChoosed ? 'gold' : 'black');
-    strokeWeight(this.ifBeingChoosed && this.ifCanBePlayed ? 5 : 1);
+    strokeWeight(this.ifBeingChoosed && this.ifCanBePlayed ? cardUi.selectedCardStrokeWeight : cardUi.normalStrokeWeight);
 
-    rect(this.x, this.y, this.size, this.size * 1.5);
+    rect(this.x, this.y, this.size, this.size * 1.5, cardUi.cardCornerRadius);
     noStroke();
+
+    let costIconX = this.x + cardUi.cardIconSize * 0.75;
+    let costIconY = this.y + cardUi.cardIconSize * 0.75;
+    fill(255);
+    circle(costIconX, costIconY, cardUi.cardIconSize);
 
     textAlign(CENTER, CENTER);
     fill(0);
-    textSize(this.textSize);
-    text(this.name, this.x + this.size / 2, this.y + this.size * 0.2);
-    text("Cost: " + this.cost, this.x + this.size / 2, this.y + this.size * 0.45);
-    text(this.rarity, this.x + this.size / 2, this.y + this.size * 0.7);
-    text(this.category, this.x + this.size / 2, this.y + this.size * 1.0);
-    text(this.description, this.x + this.size / 2, this.y + this.size * 1.25);
+    textSize(cardUi.cardTextSize);
+    text(this.cost, costIconX, costIconY);
+
+    textSize(cardUi.cardTitleTextSize);
+    text(this.name, this.x + this.size / 2, this.y + this.size * 0.18);
+    textSize(cardUi.cardTextSize);
+    text(this.rarity, this.x + this.size / 2, this.y + this.size * 0.42);
+    text(this.category, this.x + this.size / 2, this.y + this.size * 0.64);
+    textSize(cardUi.cardDescriptionTextSize);
+    text(this.description, this.x + this.size * 0.08, this.y + this.size * 0.86, this.size * 0.84, this.size * 0.5);
   }
 
   adjustSizeBasedOnMouse() {
@@ -422,7 +445,7 @@ function draw() {
   }
   else if (gamemode === 'PlayerDefeated') {
     textAlign(CENTER, CENTER);
-    textSize(width * 0.1);
+    textSize(cardUi.rewardTitleTextSize);
     fill(255, 0, 0);
     text('Game Over', width / 2, height / 2);
   }
@@ -651,7 +674,7 @@ function drawEnemies() {
   }
 
   for (let i = 0; i < enemies.length; i++) {
-    let x = enemies.length === 1 ? width * 0.75 : width * 0.75 + (i - (enemies.length - 1) / 2) * 150;
+    let x = enemies.length === 1 ? width * 0.75 : width * 0.75 + (i - (enemies.length - 1) / 2) * cardUi.enemyGap;
     let y = height / 2;
     drawEnemyImage(i,x,y);
     drawEnemyName(i,x,y);
@@ -664,8 +687,9 @@ function drawEnemies() {
 function drawEnemyName(index, x, y) {
   let enemy = enemies[index];
   textAlign(CENTER, TOP);
+  textSize(cardUi.entityTextSize);
   if (getEnemyAtMouse()) {
-    text(enemy.name, x, y + height * 0.08);
+    text(enemy.name, x, y + cardUi.entitySize * 0.7);
   }
 }
 
@@ -673,7 +697,7 @@ function drawEnemyImage(index, x, y) {
   let enemy = enemies[index];
   push();
   fill(200, 100, 100);
-  rect(enemy.x - 40, enemy.y - 40, 80, 80);
+  rect(enemy.x - cardUi.entitySize / 2, enemy.y - cardUi.entitySize / 2, cardUi.entitySize, cardUi.entitySize);
   // image(enemy.image, enemy.x, enemy.y);
   pop();
 }
@@ -681,7 +705,8 @@ function drawEnemyImage(index, x, y) {
 function drawEnemyIntent(index) {
   let enemy = enemies[index];
   if (enemy.intent === 'attack') {
-    text("ATK: " + enemy.attack, enemy.x, enemy.y - 60 + sin(frameCount * 0.06) * 3);
+    textSize(cardUi.entityTextSize);
+    text("ATK: " + enemy.attack, enemy.x, enemy.y - cardUi.entitySize * 0.75 + sin(frameCount * 0.06) * cardUi.floatDistance);
   }
   else if (enemy.intent === '') {
   }
@@ -691,19 +716,19 @@ function drawEnemyHP(index) {
   let enemy = enemies[index];
   let hpRatio = enemy.hp / enemy.maxHp;
   let hpBarWidth = min(width * 0.003 * enemy.maxHp, width * 0.2);
-  let hpBarHeight = height * 0.03;
+  let hpBarHeight = cardUi.hpBarHeight;
   let filledWidth = hpBarWidth * hpRatio;
   push();
   stroke(0);
   fill(255, 0, 0, 0);
-  rect(enemy.x - 50, enemy.y + 60, hpBarWidth, hpBarHeight);
+  rect(enemy.x - hpBarWidth / 2, enemy.y + cardUi.entitySize * 0.75, hpBarWidth, hpBarHeight);
   fill(255, 0, 0);
   noStroke();
-  rect(enemy.x - 50, enemy.y + 60, filledWidth, hpBarHeight);
+  rect(enemy.x - hpBarWidth / 2, enemy.y + cardUi.entitySize * 0.75, filledWidth, hpBarHeight);
   fill(255);
   textAlign(CENTER,CENTER);
-  textSize(height * 0.02);
-  text("HP: " + enemy.hp, enemy.x, enemy.y + 70);
+  textSize(cardUi.hpTextSize);
+  text("HP: " + enemy.hp, enemy.x, enemy.y + cardUi.entitySize * 0.75 + hpBarHeight / 2);
   pop();
 }
 
@@ -718,7 +743,7 @@ function drawBuff(target) {
   for (let i = 0; i < target.buffs.length; i++) {
     let buff = target.buffs[i];
     imageMode(CENTER);
-    image(loadImage(buffLibrary[buff.type].image), target.x - 40 + i * 20, target.y - 40, 15, 15);
+    image(loadImage(buffLibrary[buff.type].image), target.x - cardUi.entitySize / 2 + i * cardUi.buffIconGap, target.y - cardUi.entitySize / 2, cardUi.buffIconSize, cardUi.buffIconSize);
   }
 }
 
@@ -726,7 +751,7 @@ function drawPlayer() {
   let playerX = width / 4;
   let playerY = height / 2;
   fill(100, 200, 100);
-  rect(playerX - 40, playerY - 40, 80, 80);
+  rect(playerX - cardUi.entitySize / 2, playerY - cardUi.entitySize / 2, cardUi.entitySize, cardUi.entitySize);
 
   drawBuff(player);
 
@@ -735,30 +760,30 @@ function drawPlayer() {
 
   fill(255);
   textAlign(LEFT, TOP);
-  textSize(width * 0.02);
-  text("Player HP: " + player.hp + "/" + player.maxHp, 40, 60);
-  text("Energy: " + player.energy, 40, 90);
-  text("Block: " + player.block, 40, 120  );
+  textSize(cardUi.statusTextSize);
+  text("Player HP: " + player.hp + "/" + player.maxHp, cardUi.screenPadding, upperPartHeight + cardUi.lineGap);
+  text("Energy: " + player.energy, cardUi.screenPadding, upperPartHeight + cardUi.lineGap * 2);
+  text("Block: " + player.block, cardUi.screenPadding, upperPartHeight + cardUi.lineGap * 3);
 
   
 }
 
 function drawPlayerHP(x, y) {
   let hpRatio = player.hp / player.maxHp;
-  let hpBarWidth = 100;
-  let hpBarHeight = 20;
+  let hpBarWidth = cardUi.playerHpBarWidth;
+  let hpBarHeight = cardUi.hpBarHeight;
   let filledWidth = hpBarWidth * hpRatio;
   push();
   stroke(0);
   fill(255, 0, 0, 0);
-  rect(x - 50, y + 60, hpBarWidth, hpBarHeight);
+  rect(x - hpBarWidth / 2, y + cardUi.entitySize * 0.75, hpBarWidth, hpBarHeight);
   fill(255, 0, 0);
   noStroke();
-  rect(x - 50, y + 60, filledWidth, hpBarHeight);
+  rect(x - hpBarWidth / 2, y + cardUi.entitySize * 0.75, filledWidth, hpBarHeight);
   fill(255);
   textAlign(CENTER,CENTER);
-  textSize(width * 0.02);
-  text("HP: " + player.hp, x, y + 70);
+  textSize(cardUi.hpTextSize);
+  text("HP: " + player.hp, x, y + cardUi.entitySize * 0.75 + hpBarHeight / 2);
   pop();
 }
 
@@ -784,22 +809,22 @@ function drawTopBar() {
   partOfText();
 
   imageMode(CENTER);
-  image(map_symbol, 50, 13, 40, 40);
+  image(map_symbol, cardUi.mapIconX, upperPartHeight / 2, cardUi.topIconSize, cardUi.topIconSize);
 
 
-  image(coin_symbol, 100, 13, 20, 20);
+  image(coin_symbol, cardUi.coinIconX, upperPartHeight / 2, cardUi.coinIconSize, cardUi.coinIconSize);
   textAlign(LEFT, TOP);
-  textSize(width * 0.02);
+  textSize(cardUi.topBarTextSize);
   fill('gold');
-  text(player.money, 120, 5);
+  text(player.money, cardUi.moneyTextX, cardUi.topBarTextY);
 
   textAlign(RIGHT, TOP);
-  text(deck.length, width - 40, 5);
+  text(deck.length, width - cardUi.screenPadding, cardUi.topBarTextY);
 }
 
 function partOfText() {
   fill(255);
-  textSize(width * 0.02);
+  textSize(cardUi.topBarTextSize);
   textAlign(LEFT, BOTTOM);
   text(`Draw Pile: ${drawCardsPile.length}`, drawPilePositionX, drawPilePositionY);
 
@@ -930,7 +955,7 @@ function drawMap() {
 
   // draw paths 
   stroke(255);
-  strokeWeight(width * 0.005);
+  strokeWeight(cardUi.normalStrokeWeight);
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
@@ -1007,7 +1032,7 @@ function drawMap() {
         fill(0);
         noStroke();
         textAlign(CENTER, CENTER);
-        textSize(width * 0.01);
+        textSize(cardUi.mapRoomTextSize);
         text(roomType, x + cellSize / 2, y + cellSize / 2);
       }
     }
@@ -1028,13 +1053,13 @@ function drawMap() {
 
   fill(255);
   textAlign(CENTER, CENTER);
-  textSize(width * 0.02);
-  text('Map: choose a connected room on the next floor', width / 2, 50);
+  textSize(cardUi.mapTitleTextSize);
+  text('Map: choose a connected room on the next floor', width / 2, upperPartHeight / 2);
 }
 
 function displayDiscardPile() {
   let count = foldCardsPile.length;
-  let rows = ceil(count / (mapWidth / 70));
+  let rows = ceil(count / max(1, floor(mapWidth / cardUi.pileCardStepX)));
 
   fill(50, 150);
   rect(0, 0, width, height);
@@ -1044,7 +1069,7 @@ function displayDiscardPile() {
 
   if (foldCardsPile.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(width * 0.02);
+    textSize(cardUi.messageTextSize);
     fill(255);
     text('No cards in the discard pile', width / 2, height / 2);
     return;
@@ -1052,12 +1077,12 @@ function displayDiscardPile() {
 
 
   for (let i = rows; i >= 0; i--) {
-    for (let j = 0; j < floor(mapWidth / 70); j++) {
-      let index = i * floor(mapWidth / 70) + j;
-      let x = 10 + width/2 - mapWidth/2 + j * 70;
-      let y = 10 + i * 100;
+    for (let j = 0; j < max(1, floor(mapWidth / cardUi.pileCardStepX)); j++) {
+      let index = i * max(1, floor(mapWidth / cardUi.pileCardStepX)) + j;
+      let x = cardUi.pilePadding + width / 2 - mapWidth / 2 + j * cardUi.pileCardStepX;
+      let y = cardUi.pilePadding + i * cardUi.pileCardStepY;
       if (index < foldCardsPile.length) {
-        foldCardsPile[index].displayACard(index, x, y, false);
+        foldCardsPile[index].displayACard(index, x, y, true);
       }
     }
   }
@@ -1089,7 +1114,7 @@ function enterMapRoom(colon, row) {
 
 function displayDrawPile() {
   let count = drawCardsPile.length;
-  let rows = ceil(count / (mapWidth / 70));
+  let rows = ceil(count / max(1, floor(mapWidth / cardUi.pileCardStepX)));
 
   fill(50, 150);
   rect(0, 0, width, height);
@@ -1099,20 +1124,20 @@ function displayDrawPile() {
 
   if (drawCardsPile.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(width * 0.02);
+    textSize(cardUi.messageTextSize);
     fill(255);
     text('No cards in the draw pile', width / 2, height / 2);
     return;
   }
 
   for (let i = rows; i >= 0; i--) {
-    for (let j = 0; j < floor(mapWidth / 70); j++) {
-      let index = i * floor(mapWidth / 70) + j;
-      let x = 10 + width / 2 - mapWidth / 2 + j * 70;
-      let y = 10 + i * 100;
+    for (let j = 0; j < max(1, floor(mapWidth / cardUi.pileCardStepX)); j++) {
+      let index = i * max(1, floor(mapWidth / cardUi.pileCardStepX)) + j;
+      let x = cardUi.pilePadding + width / 2 - mapWidth / 2 + j * cardUi.pileCardStepX;
+      let y = cardUi.pilePadding + i * cardUi.pileCardStepY;
 
       if (index < drawCardsPile.length) {
-        drawCardsPile[index].displayACard(index, x, y, false);
+        drawCardsPile[index].displayACard(index, x, y, true);
       }
     }
   }
@@ -1120,7 +1145,7 @@ function displayDrawPile() {
 
 function displayCardPile() {
   let count = deck.length;
-  let rows = ceil(count / (mapWidth / 70));
+  let rows = ceil(count / max(1, floor(mapWidth / cardUi.pileCardStepX)));
 
   fill(50, 150);
   rect(0, 0, width, height);
@@ -1130,20 +1155,20 @@ function displayCardPile() {
 
   if (deck.length === 0) {
     textAlign(CENTER, CENTER);
-    textSize(width * 0.02);
+    textSize(cardUi.messageTextSize);
     fill(255);
     text('No cards in the deck', width / 2, height / 2);
     return;
   }
 
   for (let i = rows; i >= 0; i--) {
-    for (let j = 0; j < floor(mapWidth / 70); j++) {
-      let index = i * floor(mapWidth / 70) + j;
-      let x = 10 + width / 2 - mapWidth / 2 + j * 70;
-      let y = 10 + i * 100;
+    for (let j = 0; j < max(1, floor(mapWidth / cardUi.pileCardStepX)); j++) {
+      let index = i * max(1, floor(mapWidth / cardUi.pileCardStepX)) + j;
+      let x = cardUi.pilePadding + width / 2 - mapWidth / 2 + j * cardUi.pileCardStepX;
+      let y = cardUi.pilePadding + i * cardUi.pileCardStepY;
 
       if (index < deck.length) {
-        deck[index].displayACard(index, x, y, false);
+        deck[index].displayACard(index, x, y, true);
       }
     }
   }
@@ -1154,45 +1179,45 @@ function drawRewardScreen() {
   background(60);
 
   textAlign(CENTER, CENTER);
-  textSize(32);
+  textSize(cardUi.rewardTitleTextSize);
   fill(255);
   text('Choose Your Reward', width / 2, height / 4);
 
   for (let i = 0; i < rewardOptions.length; i++) {
     let reward = rewardOptions[i];
 
-    let rewardWidth = width / 4;
-    let rewardHeight = height / 3;
-    let gap = rewardWidth / 4;
+    let rewardWidth = cardUi.rewardWidth;
+    let rewardHeight = cardUi.rewardHeight;
+    let gap = cardUi.rewardGap;
     let startX = width / 2 - (rewardOptions.length * rewardWidth + (rewardOptions.length - 1) * gap) / 2;
     let x = startX + i * (rewardWidth + gap);
     let y = height / 2 - rewardHeight / 2;
 
     fill(220);
     stroke(0);
-    strokeWeight(width * 0.005);
-    rect(x, y, rewardWidth, rewardHeight);
+    strokeWeight(cardUi.normalStrokeWeight);
+    rect(x, y, rewardWidth, rewardHeight, cardUi.cardCornerRadius);
 
     fill(0);
     noStroke();
-    textSize(width * 0.02);
+    textSize(cardUi.rewardTextSize);
 
     if (reward.type === 'card') {
       let cardData = cardLibrary[reward.cardId];
 
-      text(cardData.name, x + rewardWidth / 2, y + 40);
-      text('Card', x + rewardWidth / 2, y + 75);
-      text('Cost: ' + cardData.cost, x + rewardWidth / 2, y + 110);
-      text(cardData.description, x + rewardWidth / 2, y + 150);
+      text(cardData.name, x + rewardWidth / 2, y + rewardHeight * 0.18);
+      text('Card', x + rewardWidth / 2, y + rewardHeight * 0.34);
+      text('Cost: ' + cardData.cost, x + rewardWidth / 2, y + rewardHeight * 0.5);
+      text(cardData.description, x + rewardWidth * 0.1, y + rewardHeight * 0.62, rewardWidth * 0.8, rewardHeight * 0.25);
     }
     else if (reward.type === 'coin') {
-      text('Coin', x + rewardWidth / 2, y + 60);
-      text('+' + reward.amount, x + rewardWidth / 2, y + 110);
+      text('Coin', x + rewardWidth / 2, y + rewardHeight * 0.3);
+      text('+' + reward.amount, x + rewardWidth / 2, y + rewardHeight * 0.5);
     }
     else if (reward.type === 'potion') {
-      text(reward.name, x + rewardWidth / 2, y + 60);
-      text('Potion', x + rewardWidth / 2, y + 100);
-      text(reward.description, x + rewardWidth / 2, y + 145);
+      text(reward.name, x + rewardWidth / 2, y + rewardHeight * 0.28);
+      text('Potion', x + rewardWidth / 2, y + rewardHeight * 0.45);
+      text(reward.description, x + rewardWidth * 0.1, y + rewardHeight * 0.58, rewardWidth * 0.8, rewardHeight * 0.25);
     }
   }
 }
@@ -1201,12 +1226,12 @@ function drawSkipButton(){
   push();
   fill(180);
   stroke(0);
-  strokeWeight(width * 0.005);
-  rect(skipButtonX, skipButtonY, skipButtonWidth, skipButtonHeight, 10);
+  strokeWeight(cardUi.normalStrokeWeight);
+  rect(skipButtonX, skipButtonY, skipButtonWidth, skipButtonHeight, cardUi.buttonCornerRadius);
   fill(0);
   noStroke();
   textAlign(CENTER, CENTER);
-  textSize(width * 0.02);
+  textSize(cardUi.buttonTextSize);
   text('Skip (E)', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
   pop();
 }
@@ -1329,18 +1354,18 @@ function mouseWheel(event) {
   if (gamemode === 'checkdiscardPile' || gamemode === 'checkdrawPile') {
     if (event.delta > 0) {
       for (let i = 0; i < foldCardsPile.length; i++) {
-        foldCardsPile[i].y -= 20;
+        foldCardsPile[i].y -= cardUi.lineGap;
       }
       for (let i = 0; i < drawCardsPile.length; i++) {
-        drawCardsPile[i].y -= 20;
+        drawCardsPile[i].y -= cardUi.lineGap;
       }
     } 
     else {
       for (let i = 0; i < foldCardsPile.length; i++) {
-        foldCardsPile[i].y += 20;
+        foldCardsPile[i].y += cardUi.lineGap;
       }
       for (let i = 0; i < drawCardsPile.length; i++) {
-        drawCardsPile[i].y += 20;
+        drawCardsPile[i].y += cardUi.lineGap;
       }
     }
   }
@@ -1430,41 +1455,132 @@ function ifTouchingCard(card) {
 }
 
 function onMapSymbol() {
-  return mouseX > 30 && mouseX < 70 && mouseY > 10 && mouseY < 50;
+  return mouseX > cardUi.mapIconX - cardUi.topIconSize / 2 &&
+         mouseX < cardUi.mapIconX + cardUi.topIconSize / 2 &&
+         mouseY > upperPartHeight / 2 - cardUi.topIconSize / 2 &&
+         mouseY < upperPartHeight / 2 + cardUi.topIconSize / 2;
 }
 
 function onDiscardPile() {
-  return mouseX > discardPilePositionX - 20 && mouseX < discardPilePositionX + 20 &&
-         mouseY > discardPilePositionY - 20 && mouseY < discardPilePositionY + 20;
+  return mouseX > discardPilePositionX - cardUi.pileClickSize / 2 &&
+         mouseX < discardPilePositionX + cardUi.pileClickSize / 2 &&
+         mouseY > discardPilePositionY - cardUi.pileClickSize / 2 &&
+         mouseY < discardPilePositionY + cardUi.pileClickSize / 2;
 }
 
 function onDrawPile() {
-  return mouseX > drawPilePositionX - 20 && mouseX < drawPilePositionX + 20 &&
-         mouseY > drawPilePositionY - 20 && mouseY < drawPilePositionY + 20;
+  return mouseX > drawPilePositionX - cardUi.pileClickSize / 2 &&
+         mouseX < drawPilePositionX + cardUi.pileClickSize / 2 &&
+         mouseY > drawPilePositionY - cardUi.pileClickSize / 2 &&
+         mouseY < drawPilePositionY + cardUi.pileClickSize / 2;
+}
+
+function getScaledSize(baseValue, minValue, maxValue) {
+  return constrain(baseValue * screenScale, minValue, maxValue);
+}
+
+function updateResponsiveUi() {
+  let baseWidth = 1280;
+  let baseHeight = 720;
+
+  aspectRatio = width / height;
+
+  if (aspectRatio > 2.1) {
+    screenScale = height / baseHeight;
+  }
+  else if (aspectRatio < 0.65) {
+    screenScale = width / baseWidth;
+  }
+  else {
+    screenScale = min(width / baseWidth, height / baseHeight);
+  }
+
+  screenScale = constrain(screenScale, 0.55, 1.8);
+
+  let cardMinSize = getScaledSize(105, 58, 155);
+  let cardMaxSize = getScaledSize(145, 78, 220);
+  let rewardWidth = min(width * 0.26, getScaledSize(260, 150, 390));
+  let rewardHeight = min(height * 0.38, getScaledSize(260, 175, 360));
+
+  cardUi = {
+    cardMinSize: cardMinSize,
+    cardMaxSize: cardMaxSize,
+    cardReach: getScaledSize(230, 125, 380),
+    cardGap: getScaledSize(12, 6, 24),
+    cardBottomMargin: getScaledSize(42, 22, 90),
+    cardCornerRadius: getScaledSize(8, 4, 18),
+    cardTitleTextSize: getScaledSize(15, 9, 24),
+    cardTextSize: getScaledSize(13, 8, 21),
+    cardDescriptionTextSize: getScaledSize(11, 7, 18),
+    cardIconSize: getScaledSize(26, 14, 44),
+
+    topBarTextSize: getScaledSize(17, 10, 28),
+    topIconSize: getScaledSize(38, 22, 58),
+    coinIconSize: getScaledSize(22, 14, 36),
+    mapIconX: getScaledSize(50, 34, 80),
+    coinIconX: getScaledSize(105, 70, 150),
+    moneyTextX: getScaledSize(125, 86, 180),
+    topBarTextY: getScaledSize(5, 3, 12),
+
+    entitySize: getScaledSize(80, 48, 135),
+    enemyGap: getScaledSize(150, 80, 260),
+    entityTextSize: getScaledSize(18, 10, 30),
+    statusTextSize: getScaledSize(18, 10, 30),
+    hpTextSize: getScaledSize(15, 9, 25),
+    hpBarHeight: getScaledSize(20, 10, 34),
+    playerHpBarWidth: getScaledSize(100, 60, 180),
+    buffIconSize: getScaledSize(15, 9, 28),
+    buffIconGap: getScaledSize(20, 12, 36),
+    floatDistance: getScaledSize(3, 2, 7),
+
+    mapRoomTextSize: getScaledSize(12, 7, 20),
+    mapTitleTextSize: getScaledSize(20, 11, 34),
+    messageTextSize: getScaledSize(22, 12, 36),
+
+    rewardWidth: rewardWidth,
+    rewardHeight: rewardHeight,
+    rewardGap: getScaledSize(45, 18, 80),
+    rewardTitleTextSize: getScaledSize(32, 18, 54),
+    rewardTextSize: getScaledSize(18, 10, 30),
+
+    pileCardStepX: cardMinSize + getScaledSize(16, 8, 28),
+    pileCardStepY: cardMinSize * 1.5 + getScaledSize(20, 10, 36),
+    pilePadding: getScaledSize(14, 8, 26),
+    pileClickSize: getScaledSize(42, 24, 72),
+
+    screenPadding: getScaledSize(40, 20, 70),
+    lineGap: getScaledSize(30, 18, 50),
+    normalStrokeWeight: getScaledSize(2, 1, 5),
+    selectedCardStrokeWeight: getScaledSize(5, 3, 9),
+    buttonCornerRadius: getScaledSize(10, 5, 20),
+    buttonTextSize: getScaledSize(20, 11, 34),
+  };
 }
 
 function setGolbalVariables() {
-  discardPilePositionX = width - 10;
-  discardPilePositionY = height - 10;
-  drawPilePositionX = 10;
-  drawPilePositionY = height - 10;
-  upperPartHeight = height * 0.05;
+  updateResponsiveUi();
+
+  discardPilePositionX = width - cardUi.screenPadding / 4;
+  discardPilePositionY = height - cardUi.screenPadding / 4;
+  drawPilePositionX = cardUi.screenPadding / 4;
+  drawPilePositionY = height - cardUi.screenPadding / 4;
+  upperPartHeight = max(height * 0.05, cardUi.topIconSize + cardUi.topBarTextY * 2);
   mapWidth = width * 0.7;
-  skipButtonX = width - width * 0.2;
+  skipButtonWidth = getScaledSize(190, 100, 310);
+  skipButtonHeight = getScaledSize(70, 42, 120);
+  skipButtonX = width - skipButtonWidth - cardUi.screenPadding;
   skipButtonY = height - height * 0.4;
-  skipButtonWidth = width * 0.15;
-  skipButtonHeight = height * 0.1;
 }
 
 function mapCellOverEdge() {
-  return mapList[1][1][2] < 100  || mapList[mapList.length - 1][mapList[0].length - 1][2] > height;
+  return mapList[1][1][2] < upperPartHeight + cardUi.screenPadding || mapList[mapList.length - 1][mapList[0].length - 1][2] > height;
 }
 
 function getRewardIndexAtMouse() {
   for (let i = 0; i < rewardOptions.length; i++) {
-    let rewardWidth = 160;
-    let rewardHeight = 220;
-    let gap = 40;
+    let rewardWidth = cardUi.rewardWidth;
+    let rewardHeight = cardUi.rewardHeight;
+    let gap = cardUi.rewardGap;
     let startX = width / 2 - (rewardOptions.length * rewardWidth + (rewardOptions.length - 1) * gap) / 2;
     let x = startX + i * (rewardWidth + gap);
     let y = height / 2 - rewardHeight / 2;
@@ -1522,7 +1638,7 @@ function isMapRoomClickable(colon, row) {
 }
 
 function getMapRoomAtMouse() {
-  let cellSize = height / 10;
+  let cellSize = min(mapWidth / 7, height / 15);
 
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
