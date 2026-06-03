@@ -84,7 +84,7 @@ const cardLibrary = {
   strike: {
     name: 'Strike',
     cost: 1,
-    rarity: 'common',
+    rarity: 'original',
     category: 'attack',
     description: 'Deal 6 damage',
     effect: [{
@@ -97,7 +97,7 @@ const cardLibrary = {
   defend: {
     name: 'Defend',
     cost: 1,
-    rarity: 'common',
+    rarity: 'original',
     category: 'skill',
     description: 'Gain 5 block',
     effect: [{
@@ -266,12 +266,21 @@ const relicLibrary = {
 };
 
 const enemyLibrary = {
+  // name, kind (weak, strong, boss), hp, attack, image
+
   slime: {
     name: 'Slime',
     kind: 'weak',
     hp: 30,
     attack: 6,
     image: 'slime.png',
+  },
+  hardSlime: {
+    name: 'Hard Slime',
+    kind: 'weak',
+    hp: 40,
+    attack: 8,
+    image: 'hard_slime.png',
   },
   giantSlime: {
     name: 'Giant Slime',
@@ -358,7 +367,7 @@ class Card {
 
     this.adjustSizeBasedOnMouse();
     
-    fill(this.rarity === 'common' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
+    fill(this.rarity === 'common' || this.rarity === 'original' ? 'gray' : this.rarity === 'rare' ? 'pink' : 'orange');
     stroke(this.ifBeingChoosed ? 'gold' : 'black');
     strokeWeight(this.ifBeingChoosed && this.ifCanBePlayed ? globalSize.selectedCardStrokeWeight : globalSize.normalStrokeWeight);
 
@@ -401,6 +410,7 @@ class Enemy {
     let data = enemyLibrary[enemyId];
 
     this.name = data.name;
+    this.kind = data.kind;
     this.hp = data.hp;
     this.maxHp = data.hp;
     this.attack = data.attack;
@@ -423,7 +433,7 @@ function setup() {
 
   deck = starterDeck.slice();
 
-  startCombat();
+  startCombat('weak');
   setGolbalVariables();
 }
 
@@ -467,7 +477,7 @@ function draw() {
 // 6. CORE GAMEPLAY
 // ====================
 
-function startCombat() {
+function startCombat(combatType) {
   drawCardsPile = [];
   holdCards = [];
   foldCardsPile = [];
@@ -480,11 +490,18 @@ function startCombat() {
   shuffle(drawCardsPile, true);
 
   enemies = [];
-  enemies.push(new Enemy('slime'));
-  enemies.push(new Enemy('giantSlime'));
-  enemies.push(new Enemy('iceTree'));
+  if (combatType === 'weak') {
+    let enemyChoice = Object.keys(enemyLibrary).filter(key => enemyLibrary[key].kind === 'weak');
+    let enemyname = random(enemyChoice);  
+    enemies.push(new Enemy(enemyname));
+  }
+  else if (combatType === 'strong') {
+    let enemyChoice = Object.keys(enemyLibrary).filter(key => enemyLibrary[key].kind === 'strong');
+    let enemyname = random(enemyChoice);
+    enemies.push(new Enemy(enemyname));
+  }
 
-  player.energy = 3;
+  player.energy = player.maxEnergy;
   player.block = 0;
 
   drawingCards(numberOfDrawing_round);
@@ -492,8 +509,20 @@ function startCombat() {
   gamemode = 'combat';
 }
 
+function drawRest() {
+  imageMode(CENTER);
+  image(loadImage('rest.png'), width / 2, height / 2, globalSize.restImageSize, globalSize.restImageSize);
+  player.hp = min(player.hp + floor(player.maxHp * 0.3), player.maxHp);
+}
+
+function drawShop() {
+}
+
+function drawEvent() {
+}
+
 function startTurn() {
-  player.energy = 3;
+  player.energy = player.maxEnergy;
   player.block = 0;
   drawingCards(numberOfDrawing_round);
 }
@@ -623,12 +652,29 @@ function generateRewards() {
 
   // card reward
   let cardIds = Object.keys(cardLibrary);
-  let randomCardId = random(cardIds);
+  let cardRarities = ['common', 'rare', 'legendary'];
+  let rarityWeights = {
+    common: 0.6,
+    rare: 0.3,
+    legendary: 0.1
+  };
 
+  let rarityPool = [];
+  for (let rarity of cardRarities) {
+    for (let i = 0; i < rarityWeights[rarity] * 100; i++) {
+      rarityPool.push(rarity);
+    }
+  } 
+  let selectedRarity = random(rarityPool);
+  let filteredCardIds = cardIds.filter(id => cardLibrary[id].rarity === selectedRarity);
+  let selectedCardId = random(filteredCardIds);
   rewardOptions.push({
     type: 'card',
-    cardId: randomCardId
+    cardId: selectedCardId,
+    name: cardLibrary[selectedCardId].name,
+    description: cardLibrary[selectedCardId].description
   });
+
 
   // coins reward
   rewardOptions.push({
@@ -731,7 +777,7 @@ function drawEnemyHP(index) {
   fill(255);
   textAlign(CENTER,CENTER);
   textSize(globalSize.commonTextSize);
-  text("HP: " + enemy.hp, enemy.x, enemy.y + globalSize.entitySize * 0.75 + hpBarHeight / 2);
+  text(`HP: ${enemy.hp} / ${enemy.maxHp}`, enemy.x, enemy.y + globalSize.entitySize * 0.75 + hpBarHeight / 2);
   pop();
 }
 
@@ -764,8 +810,7 @@ function drawPlayer() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(globalSize.commonTextSize);
-  text("Energy: " + player.energy, globalSize.screenPadding, upperPartHeight + globalSize.lineGap * 2);
-  text("Block: " + player.block, globalSize.screenPadding, upperPartHeight + globalSize.lineGap * 3);
+  text(`Block: ${player.block}`, globalSize.screenPadding, upperPartHeight + globalSize.lineGap * 3);
 
   drawEnergy();
 }
@@ -776,7 +821,7 @@ function drawEnergy(){
   fill(0);
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
-  text(player.energy/player.maxEnergy, globalSize.energyIconX, globalSize.energyIconY);
+  text(`${player.energy} / ${player.maxEnergy}`, globalSize.energyIconX, globalSize.energyIconY);
 } 
 
 function drawPlayerHP(x, y) {
@@ -794,7 +839,7 @@ function drawPlayerHP(x, y) {
   fill(255);
   textAlign(CENTER,CENTER);
   textSize(globalSize.commonTextSize);
-  text("HP: " + player.hp, x, y + globalSize.entitySize * 0.75 + hpBarHeight / 2);
+  text(`HP: ${player.hp} / ${player.maxHp}`, x, y + globalSize.entitySize * 0.75 + hpBarHeight / 2);
   pop();
 }
 
@@ -1108,16 +1153,22 @@ function enterMapRoom(colon, row) {
 
   let roomType = mapList[colon][row][0];
 
-  if (roomType === 'combat' || roomType === 'elite') {
-    startCombat();
+  if (roomType === 'combat') {
+    startCombat('weak');
+  }
+  else if (roomType === 'elite') {
+    startCombat('strong');
   }
   else if (roomType === 'rest') {
+    drawRest();
     gamemode = 'map';
   }
   else if (roomType === 'shop') {
+    drawShop();
     gamemode = 'map';
   }
   else if (roomType === 'event') {
+    drawEvent();
     gamemode = 'map';
   }
 }
