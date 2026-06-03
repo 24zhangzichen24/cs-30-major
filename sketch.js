@@ -26,8 +26,6 @@ let skipButtonY;
 let skipButtonWidth;
 let skipButtonHeight;
 
-let screenScale = 1;
-let aspectRatio = 16 / 9;
 let globalSize = {};
 
 const MAPROW = 30;
@@ -326,30 +324,31 @@ class Card {
     this.y = 0;
     this.ifBeingChoosed = false;
     this.ifCanBePlayed = false;
-    this.size = globalSize.cardMinSize;
+    this.size = globalSize.cardWidth;
     this.reach = globalSize.cardReach;
-    this.maxSize = globalSize.cardMaxSize;
-    this.minSize = globalSize.cardMinSize;
-    this.textSize = globalSize.commonTextSize;
+    this.maxSize = globalSize.cardHoverWidth;
+    this.minSize = globalSize.cardWidth;
+    this.textSize = globalSize.cardTextSize;
   }
 
   updateResponsiveSize() {
     this.reach = globalSize.cardReach;
-    this.maxSize = globalSize.cardMaxSize;
-    this.minSize = globalSize.cardMinSize;
-    this.textSize = globalSize.commonTextSize;
+    this.maxSize = globalSize.cardHoverWidth;
+    this.minSize = globalSize.cardWidth;
+    this.textSize = globalSize.cardTextSize;
   }
 
   displayACard(index, x, y, ifChoossing = false) {
     this.updateResponsiveSize();
 
     let cardGap = globalSize.cardGap;
-    let cardLayoutSize = globalSize.cardMinSize;
-    let startX = (width - (holdCards.length * (cardLayoutSize + cardGap) - cardGap)) / 2;
+    let cardLayoutWidth = globalSize.cardWidth;
+    let cardLayoutHeight = globalSize.cardHeight;
+    let startX = (width - (holdCards.length * (cardLayoutWidth + cardGap) - cardGap)) / 2;
 
     if (!ifChoossing && !this.ifBeingChoosed) {
-      this.x = startX + index * (cardLayoutSize + cardGap);
-      this.y = height - cardLayoutSize * 1.5 - globalSize.cardBottomMargin;
+      this.x = startX + index * (cardLayoutWidth + cardGap);
+      this.y = height - cardLayoutHeight - globalSize.cardBottomMargin;
     }
     else {
       this.x = x;
@@ -1504,67 +1503,81 @@ function onDrawPile() {
          mouseY < drawPilePositionY + globalSize.pileClickSize / 2;
 }
 
-function getScaledSize(baseValue, minValue, maxValue) {
-  return constrain(baseValue * screenScale, minValue, maxValue);
-}
 
 function updateResponsiveUi() {
-  let baseWidth = 1620;
-  let baseHeight = 1053;
+  let shortestSide = min(width, height);
 
-  aspectRatio = width / height;
+  let topBarHeight = height * 0.06;
+  let battleAreaHeight = height - topBarHeight;
 
-  if (aspectRatio > 2.1) {
-    screenScale = height / baseHeight;
-  }
-  else if (aspectRatio < 0.65) {
-    screenScale = width / baseWidth;
-  }
+  let handAreaWidth = width * 0.9;
+  let handAreaHeight = battleAreaHeight * 0.28;
 
+  let cardCount = max(holdCards.length, numberOfDrawing_round, 1);
 
-  screenScale = constrain(screenScale, 0.55, 1.8);
+  let cardHeightRatio = 1.5;
+  let cardGapRatio = 0.12;
 
+  let cardWidthFromScreenWidth = handAreaWidth / (cardCount + (cardCount - 1) * cardGapRatio);
+  let cardWidthFromScreenHeight = handAreaHeight / cardHeightRatio;
+
+  let cardWidth = min(cardWidthFromScreenWidth, cardWidthFromScreenHeight);
+  let cardHeight = cardWidth * cardHeightRatio;
+  let cardGap = cardWidth * cardGapRatio;
+
+  let mapAreaWidth = width * 0.7;
+  let mapRoomSize = min(mapAreaWidth / 7, (height - topBarHeight) / 15);
+
+  let entityAreaHeight = battleAreaHeight * 0.35;
+  let entitySize = min(width * 0.1, entityAreaHeight * 0.5);
 
   globalSize = {
-    cardMinSize: width * 0.1,
-    cardMaxSize: width * 0.15,
-    cardReach: width * 0.1,
-    cardGap: width * 0.02,
-    cardBottomMargin: width * 0.05,
-    cardCornerRadius: width * 0.01,
+    topBarHeight: topBarHeight,
 
-    topIconSize: width * 0.03,
-    coinIconSize: width * 0.03,
-    mapIconX: width * 0.1,
-    coinIconX: width * 0.2,
-    moneyTextX: width * 0.22,
-    topBarTextY: width * 0.01,
+    cardWidth: cardWidth,
+    cardHeight: cardHeight,
+    cardGap: cardGap,
+    cardHoverWidth: cardWidth * 1.25,
+    cardReach: cardWidth * 1.8,
+    cardTextSize: cardWidth * 0.12,
+    cardTitleTextSize: cardWidth * 0.15,
+    cardDescriptionTextSize: cardWidth * 0.105,
+    cardIconSize: cardWidth * 0.22,
+    cardCornerRadius: cardWidth * 0.08,
+    cardBottomMargin: battleAreaHeight * 0.04,
 
-    entitySize: width * 0.1,
-    enemyGap: width * 0.15,
-    hpBarHeight: width * 0.015,
-    playerHpBarWidth: width * 0.25,
-    buffIconSize: width * 0.02,
-    buffIconGap: width * 0.01,
-    floatDistance: width * 0.02,
+    mapRoomSize: mapRoomSize,
 
-    rewardWidth: width * 0.26,
-    rewardHeight: width * 0.16,
-    rewardGap: width * 0.02,
+    topIconSize: topBarHeight * 0.7,
+    coinIconSize: topBarHeight * 0.5,
 
-    pileCardStepX: globalSize.cardMinSize + width * 0.02,
-    pileCardStepY: (globalSize.cardMinSize  + width * 0.02) * 1.5,
-    pilePadding: width * 0.02,
-    pileClickSize: width * 0.05,
+    entitySize: entitySize,
+    enemyGap: width * 0.12,
+    hpBarWidth: entitySize * 1.4,
+    hpBarHeight: entitySize * 0.18,
+    buffIconSize: entitySize * 0.22,
+    buffIconGap: entitySize * 0.25,
+    floatDistance: entitySize * 0.06,
 
+    rewardWidth: width * 0.22,
+    rewardHeight: battleAreaHeight * 0.32,
+    rewardGap: width * 0.03,
+
+    pileCardStepX: cardWidth + cardGap,
+    pileCardStepY: cardHeight + cardGap,
+    pilePadding: shortestSide * 0.02,
+    pileClickSize: topBarHeight,
+
+    energyIconSize: entitySize * 0.65,
     energyIconX: width * 0.1,
     energyIconY: height * 0.65,
-    energyIconSize: width * 0.1,
 
-    screenPadding: width * 0.02,
-    normalStrokeWeight: 3,
-    buttonCornerRadius: 30,
-    commonTextSize: 16
+    screenPadding: shortestSide * 0.025,
+    normalStrokeWeight: shortestSide * 0.003,
+    selectedCardStrokeWeight: shortestSide * 0.007,
+    buttonCornerRadius: shortestSide * 0.018,
+    commonTextSize: shortestSide * 0.025,
+    lineGap: shortestSide * 0.04
   };
 }
 
