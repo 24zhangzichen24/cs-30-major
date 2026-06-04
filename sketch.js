@@ -49,6 +49,7 @@ let player = {
 };
 
 let enemies = [];
+let damageTexts = [];
 
 let deck = [];
 let drawCardsPile = [];
@@ -154,7 +155,17 @@ const cardLibrary = {
     ],
     image: 'poison_stab.png'
   },
-  
+  rummage: {
+    name: 'Rummage',
+    cost: 1,
+    rarity: 'common',
+    category: 'skill',
+    description: 'Draw 2 cards from the deck.',
+    effect: [
+      { type: 'draw', value: 2 }
+    ],
+    image: 'rummage.png'
+  }
 };
 
 const buffLibrary = {
@@ -386,7 +397,6 @@ class Card {
     textSize(this.textSize);
     text(this.name, this.x + this.size / 2, this.y + this.size * 0.18);
     textSize(globalSize.commonTextSize);
-    text(this.rarity, this.x + this.size / 2, this.y + this.size * 0.42);
     text(this.category, this.x + this.size / 2, this.y + this.size * 0.64);
     textSize(this.textSize);
     text(this.description, this.x + this.size * 0.08, this.y + this.size * 0.86, this.size * 0.84, this.size * 0.5);
@@ -467,7 +477,7 @@ function draw() {
     drawRewardScreen();
   }
 
-
+  drawDamageNumber();
   drawTopBar();
 }
 
@@ -531,6 +541,8 @@ function endTurn() {
     foldingCards(i);
   }
 
+  clearSelectedCards();
+
   enemyTurn();
   startTurn();
 }
@@ -589,6 +601,7 @@ function resolveEffect(effect, target) {
   if (effect.type === 'damage') {
     if (target) {
       target.hp -= effect.value;
+      displayDamageText(effect.value, target);
       if (target.hp < 0) {
         target.hp = 0;
       }
@@ -619,8 +632,40 @@ function resolveEffect(effect, target) {
 }
 
 function displayDamageText(amount, target) {
-  // Implementation for displaying damage text
+  let animationDuration = 200; // frames
+  let startTime = frameCount;
+  let damageText = {
+    amount: amount,
+    x: target.x,
+    y: target.y,
+    speed: random(3,4),
+    angle: random(-PI / 6, PI / 6),
+    alpha: 255,
+    update: function() {
+      let elapsed = frameCount - startTime;
+      if (elapsed < animationDuration) {
+        this.speed *= 0.95;
+        this.x += this.speed * cos(this.angle);
+        this.y -= this.speed * sin(this.angle);
+        this.alpha = map(elapsed, 0, animationDuration, 255, 0);
+      }
+      else {
+        this.alpha = 0;
+      }
+    },
+    display: function() {
+      if (this.alpha > 0) {
+        fill(255, 0, 0, this.alpha);
+        textAlign(CENTER, CENTER);
+        textSize(globalSize.damageTextSize);
+        text(this.amount, this.x, this.y);
+      }
+    }
+  };
+  damageTexts.push(damageText);
 }
+
+
 
 function enemyTurn() {
   if (enemies.length === 0) {
@@ -640,6 +685,7 @@ function enemyTurn() {
   }
 
   player.hp -= damage;
+  displayDamageText(damage, player);
 
   if (player.hp < 0) {
     player.hp = 0;
@@ -856,18 +902,28 @@ function checkIfCombatEnded() {
   }
 }
 
+function drawDamageNumber(){
+  for (let i = damageTexts.length - 1; i >= 0; i--) {
+    damageTexts[i].update();
+    damageTexts[i].display();
+    if (damageTexts[i].alpha <= 0) {
+      damageTexts.splice(i, 1);
+    }
+  }
+}
+
 
 function drawTopBar() {
   fill(150);
-  rect(0, 0, width, upperPartHeight);
+  rect(0, 0, width, globalSize.upperPartHeight);
 
   partOfText();
 
   imageMode(CENTER);
-  image(map_symbol, globalSize.mapIconX, upperPartHeight / 2, globalSize.topIconSize * 2, globalSize.topIconSize * 2);
+  image(map_symbol, globalSize.mapIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize * 2, globalSize.topIconSize * 2);
 
 
-  image(coin_symbol, globalSize.coinIconX, upperPartHeight / 2, globalSize.coinIconSize, globalSize.coinIconSize);
+  image(coin_symbol, globalSize.coinIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);
   textAlign(LEFT, TOP);
   textSize(globalSize.commonTextSize);
   fill('gold');
@@ -1536,8 +1592,8 @@ function ifTouchingCard(card) {
 function onMapSymbol() {
   return mouseX > globalSize.mapIconX - globalSize.topIconSize / 2 &&
          mouseX < globalSize.mapIconX + globalSize.topIconSize / 2 &&
-         mouseY > upperPartHeight / 2 - globalSize.topIconSize / 2 &&
-         mouseY < upperPartHeight / 2 + globalSize.topIconSize / 2;
+         mouseY > globalSize.upperPartHeight / 2 - globalSize.topIconSize / 2 &&
+         mouseY < globalSize.upperPartHeight / 2 + globalSize.topIconSize / 2;
 }
 
 function onDiscardPile() {
@@ -1558,8 +1614,8 @@ function onDrawPile() {
 function updateResponsiveUi() {
   let shortestSide = min(width, height);
 
-  let topBarHeight = height * 0.06;
-  let battleAreaHeight = height - topBarHeight;
+  let upperPartHeight = height * 0.06;
+  let battleAreaHeight = height - upperPartHeight;
 
   let handAreaWidth = width * 0.9;
   let handAreaHeight = battleAreaHeight * 0.28;
@@ -1577,13 +1633,13 @@ function updateResponsiveUi() {
   let cardGap = cardWidth * cardGapRatio;
 
   let mapAreaWidth = width * 0.7;
-  let mapRoomSize = min(mapAreaWidth / 7, (height - topBarHeight) / 15);
+  let mapRoomSize = min(mapAreaWidth / 7, (height - upperPartHeight) / 15);
 
   let entityAreaHeight = battleAreaHeight * 0.35;
   let entitySize = min(width * 0.1, entityAreaHeight * 0.5);
 
   globalSize = {
-    topBarHeight: topBarHeight,
+
 
     cardWidth: cardWidth,
     cardHeight: cardHeight,
@@ -1599,8 +1655,19 @@ function updateResponsiveUi() {
 
     mapRoomSize: mapRoomSize,
 
-    topIconSize: topBarHeight * 0.7,
-    coinIconSize: topBarHeight * 0.5,
+    playerHpBarWidth: entitySize * 1.4,
+    playerHpBarHeight: entitySize * 0.18,
+
+    damageTextSize: entitySize * 0.5,
+
+    upperPartHeight: upperPartHeight,
+    mapWidth: mapAreaWidth,
+    mapIconX: globalSize.screenPadding + globalSize.topIconSize / 2,
+    moneyTextX: globalSize.screenPadding + globalSize.topIconSize * 2,
+    topBarTextY: upperPartHeight / 2 - globalSize.commonTextSize / 2,
+    coinIconX: globalSize.screenPadding + globalSize.topIconSize * 1.5,
+    topIconSize: upperPartHeight * 0.7,
+
 
     entitySize: entitySize,
     enemyGap: width * 0.12,
@@ -1617,7 +1684,7 @@ function updateResponsiveUi() {
     pileCardStepX: cardWidth + cardGap,
     pileCardStepY: cardHeight + cardGap,
     pilePadding: shortestSide * 0.02,
-    pileClickSize: topBarHeight,
+    pileClickSize: upperPartHeight,
 
     energyIconSize: entitySize * 0.65,
     energyIconX: width * 0.1,
@@ -1641,8 +1708,8 @@ function setGolbalVariables() {
   drawPilePositionY = height - globalSize.screenPadding / 4;
   upperPartHeight = max(height * 0.05, globalSize.topIconSize + globalSize.topBarTextY * 2);
   mapWidth = width * 0.7;
-  skipButtonWidth = getScaledSize(190, 100, 310);
-  skipButtonHeight = getScaledSize(70, 42, 120);
+  skipButtonWidth = width * 0.15;
+  skipButtonHeight = height * 0.06;
   skipButtonX = width - skipButtonWidth - globalSize.screenPadding;
   skipButtonY = height - height * 0.4;
 }
