@@ -17,7 +17,6 @@ let discardPilePositionX;
 let discardPilePositionY;
 let drawPilePositionX;
 let drawPilePositionY;
-let upperPartHeight;
 let mapWidth;
 let skipButtonX;
 let skipButtonY;
@@ -356,7 +355,7 @@ function preload() {
   images.mapSymbol = loadImage('assets/images/map_symbol.png');
   images.coinSymbol = loadImage('assets/images/coin_symbol.png');
 
-  images.strength = loadImage('assets/images/strength_symbol.png');
+  images.strength = loadImage('assets/images/strength.png');
   images.dexterity = loadImage('assets/images/dexterity.png');
   images.vulnerable = loadImage('assets/images/vulnerable.png');
   images.weak = loadImage('assets/images/weak.png');
@@ -934,7 +933,7 @@ function drawPlayer() {
   fill(255);
   textAlign(LEFT, TOP);
   textSize(globalSize.commonTextSize);
-  text(`Block: ${player.block}`, globalSize.screenPadding, upperPartHeight + globalSize.lineGap * 3);
+  text(`Block: ${player.block}`, globalSize.screenPadding, globalSize.upperPartHeight + globalSize.lineGap * 3);
 
   drawEnergy();
 }
@@ -1137,7 +1136,7 @@ function drawMap() {
 
   // map background
   fill(150);
-  rect(width / 2 - mapWidth / 2, upperPartHeight, mapWidth, height - upperPartHeight);
+  rect(width / 2 - mapWidth / 2, globalSize.upperPartHeight, mapWidth, height - globalSize.upperPartHeight);
 
   // draw paths 
   stroke(255);
@@ -1177,7 +1176,7 @@ function drawMap() {
 
       if (paths) {
         if (row > 1) {
-          if (!mapList[colon][row - 1][3] || mapList[colon][row - 1][3].length < 1) {
+          if (mapList[colon][row - 1][3].length < 1) {
             continue;
           }
         }
@@ -1223,10 +1222,23 @@ function drawMap() {
     }
   }
 
+  // text hit about map symbol at top right corner in map
   fill(255);
-  textAlign(CENTER, CENTER);
+  imageMode(LEFT, CENTER);
+  textAlign(RIGHT, CENTER);
   textSize(globalSize.commonTextSize);
-  text('Map: choose a connected room on the next floor', width / 2, upperPartHeight + globalSize.lineGap);
+  image(images.combat, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);
+  text('combat', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2);
+  image(images.elite, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap, globalSize.topIconSize, globalSize.topIconSize);
+  text('elite', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap);
+  image(images.rest, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*2, globalSize.topIconSize, globalSize.topIconSize);
+  text('rest', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*2);
+  image(images.shop, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*3, globalSize.topIconSize, globalSize.topIconSize);
+  text('shop', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*3);
+  image(images.event, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*4, globalSize.topIconSize, globalSize.topIconSize);
+  text('event', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*4);
+
+  text('Map: choose a connected room on the next floor', width / 2, globalSize.upperPartHeight + globalSize.lineGap);
 }
 
 function displayDiscardPile() {
@@ -1677,7 +1689,7 @@ function updateResponsiveUi() {
   let shortestSide = min(width, height);
 
   let upperPartHeight = height * 0.06;
-  let battleAreaHeight = height - upperPartHeight;
+  let battleAreaHeight = height - globalSize.upperPartHeight;
 
   let handAreaWidth = width * 0.9;
   let handAreaHeight = battleAreaHeight * 0.28;
@@ -1695,7 +1707,7 @@ function updateResponsiveUi() {
   let cardGap = cardWidth * cardGapRatio;
 
   let mapAreaWidth = width * 0.7;
-  let mapRoomSize = min(mapAreaWidth / 7, (height - upperPartHeight) / 15);
+  let mapRoomSize = min(mapAreaWidth / 7, (height - globalSize.upperPartHeight) / 15);
 
   let entityAreaHeight = battleAreaHeight * 0.35;
   let entitySize = min(width * 0.1, entityAreaHeight * 0.5);
@@ -1727,9 +1739,9 @@ function updateResponsiveUi() {
     mapWidth: mapAreaWidth,
     mapIconX: globalSize.screenPadding + globalSize.topIconSize / 2,
     moneyTextX: globalSize.screenPadding + globalSize.topIconSize * 2,
-    topBarTextY: upperPartHeight / 2 - globalSize.commonTextSize / 2,
+    topBarTextY: globalSize.upperPartHeight / 2 - globalSize.commonTextSize / 2,
     coinIconX: globalSize.screenPadding + globalSize.topIconSize * 1.5,
-    topIconSize: upperPartHeight * 0.7,
+    topIconSize: globalSize.upperPartHeight * 0.7,
 
 
     entitySize: entitySize,
@@ -1747,7 +1759,7 @@ function updateResponsiveUi() {
     pileCardStepX: cardWidth + cardGap,
     pileCardStepY: cardHeight + cardGap,
     pilePadding: shortestSide * 0.02,
-    pileClickSize: upperPartHeight,
+    pileClickSize: globalSize.upperPartHeight,
 
     energyIconSize: entitySize * 0.65,
     energyIconX: width * 0.1,
@@ -1769,7 +1781,6 @@ function setGolbalVariables() {
   discardPilePositionY = height - globalSize.screenPadding / 4;
   drawPilePositionX = globalSize.screenPadding / 4;
   drawPilePositionY = height - globalSize.screenPadding / 4;
-  upperPartHeight = max(height * 0.05, globalSize.topIconSize + globalSize.topBarTextY * 2);
   mapWidth = width * 0.7;
   skipButtonWidth = width * 0.15;
   skipButtonHeight = height * 0.06;
@@ -1778,7 +1789,7 @@ function setGolbalVariables() {
 }
 
 function mapCellOverEdge() {
-  return mapList[1][1][2] < upperPartHeight + globalSize.screenPadding || mapList[mapList.length - 1][mapList[0].length - 1][2] > height;
+  return mapList[1][1][2] < globalSize.upperPartHeight + globalSize.screenPadding || mapList[mapList.length - 1][mapList[0].length - 1][2] > height;
 }
 
 function getRewardIndexAtMouse() {
