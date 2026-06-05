@@ -41,7 +41,6 @@ let player = {
   energy: 3,
   maxEnergy: 3,
   block: 0,
-  buff: [],
   image: 'player.png',
   money: 0,
   buffs: [],
@@ -281,15 +280,34 @@ const enemyLibrary = {
     name: 'Slime',
     kind: 'weak',
     hp: 30,
-    attack: 6,
     image: 'slime.png',
+    intent: function() {
+      let intentType = random(['attack', 'buff_self', 'buff_player']);
+      if (intentType === 'attack') {
+        this.intent = {attack: 6};
+      }
+      if (intentType === 'buff_self') {
+        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+      }
+    }
   },
   hardSlime: {
     name: 'Hard Slime',
     kind: 'weak',
     hp: 40,
-    attack: 8,
     image: 'hard_slime.png',
+    intent: function() {
+      let intentType = random(['attack', 'buff_self', 'buff_player']);
+      if (intentType === 'attack') {
+        this.intent = {attack: 8};
+      }
+      if (intentType === 'buff_self') {
+        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+      }
+      if (intentType === 'buff_player') {
+        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+      }
+    }
   },
   giantSlime: {
     name: 'Giant Slime',
@@ -297,6 +315,18 @@ const enemyLibrary = {
     hp: 60,
     attack: 12,
     image: 'giant_slime.png',
+    intent: function() {
+      let intentType = random(['attack', 'buff_self', 'buff_player']);
+      if (intentType === 'attack') {
+        this.intent = {attack: 12};
+      }
+      if (intentType === 'buff_self') {
+        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+      }
+      if (intentType === 'buff_player') {
+        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+      }
+    }
   },
   iceTree: {
     name: 'Ice Tree',
@@ -304,6 +334,18 @@ const enemyLibrary = {
     hp: 100,
     attack: 15,
     image: 'ice_tree.png',
+    intent: function() {
+      let intentType = random(['attack', 'buff_self', 'buff_player']);
+      if (intentType === 'attack') {
+        this.intent = {attack: 15};
+      }
+      if (intentType === 'buff_self') {
+        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+      }
+      if (intentType === 'buff_player') {
+        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+      }
+    }
   }
 };
 
@@ -314,8 +356,8 @@ const enemyLibrary = {
 
 function preload() {
   preloadCardImages();
-  map_symbol = loadImage('map_symbol.png');
-  coin_symbol = loadImage('coin_symbol.png');
+  map_symbol = loadImage('assets/images/map_symbol.png');
+  coin_symbol = loadImage('assets/images/coin_symbol.png');
 }
 
 function preloadCardImages() {
@@ -422,8 +464,7 @@ class Enemy {
     this.kind = data.kind;
     this.hp = data.hp;
     this.maxHp = data.hp;
-    this.attack = data.attack;
-    this.intent = 'attack';
+    this.intent = data.intent;
     this.x = width / 4 *3;
     this.y = height / 2;
     this.buffs = [];
@@ -671,24 +712,39 @@ function enemyTurn() {
   if (enemies.length === 0) {
     return;
   }
+  for (let i = 0; i < enemies.length; i++) { 
+    let enemy = enemies[i];
+    let intent = enemy.intent;
+    if (intent.buff_self) {
+      let existingBuff = enemy.buffs.find(buff => buff.type === intent.buff.type);
+      if (existingBuff) {
+        existingBuff.stacks += intent.buff.stacks;
+      }
+    } 
+    if (intent.buff_player) {
+      let existingBuff = player.buffs.find(buff => buff.type === intent.buff.type);
+      if (existingBuff) {
+        existingBuff.stacks += intent.buff.stacks;
+      }
+    }
+    else if (intent.attack) {
+      let damage = intent.attack;
+      let block = player.block;
+      if (block >= damage) {
+        player.block -= damage;
+        damage = 0;
+      }
+      else {
+        damage -= player.block;
+        player.block = 0;
+      }
 
-  let enemy = enemies[0];
-  let damage = enemy.attack;
-
-  if (player.block >= damage) {
-    player.block -= damage;
-    damage = 0;
-  }
-  else {
-    damage -= player.block;
-    player.block = 0;
-  }
-
-  player.hp -= damage;
-  displayDamageText(damage, player);
-
-  if (player.hp < 0) {
-    player.hp = 0;
+      player.hp -= damage;
+      displayDamageText(damage, player);
+    }
+    if (player.hp < 0) {
+      player.hp = 0;
+    }
   }
 }
 
@@ -798,11 +854,13 @@ function drawEnemyImage(index, x, y) {
 
 function drawEnemyIntent(index) {
   let enemy = enemies[index];
-  if (enemy.intent === 'attack') {
+  if (enemy.intent.attack) {
     textSize(globalSize.commonTextSize);
-    text("ATK: " + enemy.attack, enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
+    text("ATK: " + enemy.intent.attack, enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
   }
-  else if (enemy.intent === '') {
+  else if (enemy.intent.buff) {
+    textSize(globalSize.commonTextSize);
+    text("BUFF: " + enemy.intent.buff.type + " (" + enemy.intent.buff.stacks + ")", enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
   }
 }
 
@@ -1470,18 +1528,18 @@ function mouseWheel(event) {
   if (gamemode === 'checkdiscardPile' || gamemode === 'checkdrawPile') {
     if (event.delta > 0) {
       for (let i = 0; i < foldCardsPile.length; i++) {
-        foldCardsPile[i].y -= globalSize.lineGap;
+        foldCardsPile[i].y -= event.delta;
       }
       for (let i = 0; i < drawCardsPile.length; i++) {
-        drawCardsPile[i].y -= globalSize.lineGap;
+        drawCardsPile[i].y -= event.delta;
       }
     } 
     else {
       for (let i = 0; i < foldCardsPile.length; i++) {
-        foldCardsPile[i].y += globalSize.lineGap;
+        foldCardsPile[i].y += event.delta;
       }
       for (let i = 0; i < drawCardsPile.length; i++) {
-        drawCardsPile[i].y += globalSize.lineGap;
+        drawCardsPile[i].y += event.delta;
       }
     }
   }
