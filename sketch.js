@@ -276,22 +276,23 @@ const enemyLibrary = {
     kind: 'weak',
     hp: 30,
     image: 'slime.png',
-    intent: function() {
+    createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
-        this.intent = {attack: 6};
+        return {attack: 6};
       }
       if (intentType === 'buff_self') {
-        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+        return {buff_self: {type: 'strength', stacks: 5}};
       }
     }
+
   },
   hardSlime: {
     name: 'Hard Slime',
     kind: 'weak',
     hp: 40,
     image: 'hard_slime.png',
-    intent: function() {
+    createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
         this.intent = {attack: 8};
@@ -310,7 +311,7 @@ const enemyLibrary = {
     hp: 60,
     attack: 12,
     image: 'giant_slime.png',
-    intent: function() {
+    createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
         this.intent = {attack: 12};
@@ -329,7 +330,7 @@ const enemyLibrary = {
     hp: 100,
     attack: 15,
     image: 'ice_tree.png',
-    intent: function() {
+    createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
         this.intent = {attack: 15};
@@ -474,7 +475,8 @@ class Enemy {
     this.kind = data.kind;
     this.hp = data.hp;
     this.maxHp = data.hp;
-    this.intent = data.intent;
+    this.intent = {};
+    this.createIntent = data.createIntent;
     this.x = width / 4 *3;
     this.y = height / 2;
     this.buffs = [];
@@ -585,6 +587,9 @@ function startTurn() {
   player.energy = player.maxEnergy;
   player.block = 0;
   drawingCards(numberOfDrawing_round);
+  for (let i = 0; i < enemies.length; i++) {
+    enemies[i].createIntent();
+  }
 }
 
 function endTurn() {
@@ -724,21 +729,23 @@ function enemyTurn() {
   }
   for (let i = 0; i < enemies.length; i++) { 
     let enemy = enemies[i];
-    let intent = enemy.intent;
-    if (intent.buff_self) {
-      let existingBuff = enemy.buffs.find(buff => buff.type === intent.buff.type);
+
+    enemy.createIntent();
+
+    if (enemy.intent.buff_self) {
+      let existingBuff = enemy.buffs.find(buff => buff.type === enemy.intent.buff.type);
       if (existingBuff) {
-        existingBuff.stacks += intent.buff.stacks;
+        existingBuff.stacks += enemy.intent.buff.stacks;
       }
     } 
-    if (intent.buff_player) {
-      let existingBuff = player.buffs.find(buff => buff.type === intent.buff.type);
+    if (enemy.intent.buff_player) {
+      let existingBuff = player.buffs.find(buff => buff.type === enemy.intent.buff.type);
       if (existingBuff) {
-        existingBuff.stacks += intent.buff.stacks;
+        existingBuff.stacks += enemy.intent.buff.stacks;
       }
     }
-    else if (intent.attack) {
-      let damage = intent.attack;
+    else if (enemy.intent.attack) {
+      let damage = enemy.intent.attack;
       let block = player.block;
       if (block >= damage) {
         player.block -= damage;
@@ -865,12 +872,19 @@ function drawEnemyImage(index, x, y) {
 function drawEnemyIntent(index) {
   let enemy = enemies[index];
   if (enemy.intent.attack) {
+    console.log(enemy.intent.attack);
     textSize(globalSize.commonTextSize);
     text("ATK: " + enemy.intent.attack, enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
   }
-  else if (enemy.intent.buff) {
+  else if (enemy.intent.buff_self) {
+    console.log(enemy.intent.buff_self);
     textSize(globalSize.commonTextSize);
-    text("BUFF: " + enemy.intent.buff.type + " (" + enemy.intent.buff.stacks + ")", enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
+    text("BUFF: " + enemy.intent.buff_self.type + " (" + enemy.intent.buff_self.stacks + ")", enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
+  }
+  else if (enemy.intent.buff_player) {
+    console.log(enemy.intent.buff_player);
+    textSize(globalSize.commonTextSize);
+    text("DEBUFF: " + enemy.intent.buff_player.type + " (" + enemy.intent.buff_player.stacks + ")", enemy.x, enemy.y - globalSize.entitySize * 0.75 + sin(frameCount * 0.06) * globalSize.floatDistance);
   }
 }
 
@@ -999,10 +1013,11 @@ function drawTopBar() {
 
   imageMode(CENTER);
   image(images.mapSymbol, globalSize.mapIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize * 2, globalSize.topIconSize * 2);
-  image(images.coinSymbol, globalSize.coinIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);  textAlign(LEFT, TOP);
+  image(images.coinSymbol, globalSize.coinIconX + globalSize.topIconSize , globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);  
+  textAlign(LEFT, TOP);
   textSize(globalSize.commonTextSize);
   fill('gold');
-  text(player.money, globalSize.moneyTextX, globalSize.topBarTextY);
+  text(player.money, globalSize.moneyTextX + globalSize.topIconSize, globalSize.topBarTextY);
 
   textAlign(RIGHT, TOP);
   text(deck.length, width - globalSize.screenPadding, globalSize.topBarTextY);
@@ -1223,21 +1238,23 @@ function drawMap() {
   }
 
   // text hit about map symbol at top right corner in map
-  fill(255);
-  imageMode(LEFT, CENTER);
-  textAlign(RIGHT, CENTER);
+  fill('black');
+  imageMode(CORNER);
+  textAlign(RIGHT, BOTTOM);
   textSize(globalSize.commonTextSize);
-  image(images.combat, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);
-  text('combat', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2);
-  image(images.elite, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap, globalSize.topIconSize, globalSize.topIconSize);
-  text('elite', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap);
-  image(images.rest, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*2, globalSize.topIconSize, globalSize.topIconSize);
-  text('rest', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*2);
-  image(images.shop, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*3, globalSize.topIconSize, globalSize.topIconSize);
-  text('shop', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*3);
-  image(images.event, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*4, globalSize.topIconSize, globalSize.topIconSize);
-  text('event', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight / 2 + globalSize.lineGap*4);
+  image(images.combat, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap, globalSize.topIconSize, globalSize.topIconSize);
+  text('combat', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 2);
+  image(images.elite, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 2, globalSize.topIconSize, globalSize.topIconSize);
+  text('elite', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 3);
+  image(images.rest, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 3, globalSize.topIconSize, globalSize.topIconSize);
+  text('rest', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 4);
+  image(images.shop, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 4, globalSize.topIconSize, globalSize.topIconSize);
+  text('shop', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 5);
+  image(images.event, width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 5, globalSize.topIconSize, globalSize.topIconSize);
+  text('event', width / 2 + mapWidth / 2 - globalSize.topIconSize, globalSize.upperPartHeight + globalSize.lineGap * 6);
 
+  fill(255);
+  textAlign(CENTER, BOTTOM);
   text('Map: choose a connected room on the next floor', width / 2, globalSize.upperPartHeight + globalSize.lineGap);
 }
 
@@ -1689,7 +1706,7 @@ function updateResponsiveUi() {
   let shortestSide = min(width, height);
 
   let upperPartHeight = height * 0.06;
-  let battleAreaHeight = height - globalSize.upperPartHeight;
+  let battleAreaHeight = height - upperPartHeight;
 
   let handAreaWidth = width * 0.9;
   let handAreaHeight = battleAreaHeight * 0.28;
@@ -1711,7 +1728,9 @@ function updateResponsiveUi() {
 
   let entityAreaHeight = battleAreaHeight * 0.35;
   let entitySize = min(width * 0.1, entityAreaHeight * 0.5);
-  
+
+  let screenPadding = shortestSide * 0.025;
+  let topIconSize = upperPartHeight * 0.7;
 
   globalSize = {
 
@@ -1737,11 +1756,11 @@ function updateResponsiveUi() {
 
     upperPartHeight: upperPartHeight,
     mapWidth: mapAreaWidth,
-    mapIconX: globalSize.screenPadding + globalSize.topIconSize / 2,
-    moneyTextX: globalSize.screenPadding + globalSize.topIconSize * 2,
-    topBarTextY: globalSize.upperPartHeight / 2 - globalSize.commonTextSize / 2,
-    coinIconX: globalSize.screenPadding + globalSize.topIconSize * 1.5,
-    topIconSize: globalSize.upperPartHeight * 0.7,
+    mapIconX: screenPadding + topIconSize / 2,
+    moneyTextX: screenPadding + topIconSize * 2,
+    topBarTextY: upperPartHeight / 2 - globalSize.commonTextSize / 2,
+    coinIconX: screenPadding + topIconSize * 1.5,
+    topIconSize: upperPartHeight * 0.7,
 
 
     entitySize: entitySize,
@@ -1765,7 +1784,7 @@ function updateResponsiveUi() {
     energyIconX: width * 0.1,
     energyIconY: height * 0.65,
 
-    screenPadding: shortestSide * 0.025,
+    screenPadding: screenPadding,
     normalStrokeWeight: shortestSide * 0.003,
     selectedCardStrokeWeight: shortestSide * 0.007,
     buttonCornerRadius: shortestSide * 0.018,
