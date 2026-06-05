@@ -6,14 +6,12 @@
 
 let numberOfDrawing_round = 5;
 
-
 let mapList = [];
 let currentMapColon = -1;
 let currentMapRow = -1;
 let ifChoossing = false;
 let ifIncombat = false;
 let presentGamemode = 'combat';
-
 
 let discardPilePositionX;
 let discardPilePositionY;
@@ -31,8 +29,6 @@ let globalSize = {};
 const MAPROW = 30;
 const MAPCOLON = 5;
 
-let map_symbol;
-let coin_symbol;
 let gamemode = 'combat';
 
 let player = {
@@ -44,7 +40,7 @@ let player = {
   image: 'player.png',
   money: 0,
   buffs: [],
-  poisionOnMap : {x : 0, y : 0, stacks : 0},
+  poisonOnMap : {x : 0, y : 0, stacks : 0},
 };
 
 let enemies = [];
@@ -142,7 +138,7 @@ const cardLibrary = {
       { type: 'block', value: 5 }
     ]
   },
-  poisionStab: {
+  poisonStab: {
     name: 'Poison Stab',
     cost: 1,
     rarity: 'common',
@@ -188,8 +184,8 @@ const buffLibrary = {
     description: 'Deals 25% less damage for each stack.',
     image: 'weak.png',
   },
-  poision: {
-    name: 'Poison',
+  poison: {
+    name: 'Poisoin',
     description: 'Takes damage at the start of turn for each stack. then lose 1 stack.',
     image: 'poison.png',
   }
@@ -354,10 +350,25 @@ const enemyLibrary = {
 // 3. PRELOAD
 // ====================
 
+let images = {};
+
 function preload() {
+  images.mapSymbol = loadImage('assets/images/map_symbol.png');
+  images.coinSymbol = loadImage('assets/images/coin_symbol.png');
+
+  images.strength = loadImage('assets/images/strength_symbol.png');
+  images.dexterity = loadImage('assets/images/dexterity.png');
+  images.vulnerable = loadImage('assets/images/vulnerable.png');
+  images.weak = loadImage('assets/images/weak.png');
+  images.poison = loadImage('assets/images/poison.png');
+
+  images.combat = loadImage('assets/images/combat.png');
+  images.elite = loadImage('assets/images/elite.png');
+  images.event = loadImage('assets/images/event.png');
+  images.rest = loadImage('assets/images/rest.png');
+  images.shop = loadImage('assets/images/shop.png');
+
   preloadCardImages();
-  map_symbol = loadImage('assets/images/map_symbol.png');
-  coin_symbol = loadImage('assets/images/coin_symbol.png');
 }
 
 function preloadCardImages() {
@@ -561,7 +572,7 @@ function startCombat(combatType) {
 
 function drawRest() {
   imageMode(CENTER);
-  image(loadImage('rest.png'), width / 2, height / 2, globalSize.restImageSize, globalSize.restImageSize);
+  image(images.restImage, width / 2, height / 2, globalSize.restImageSize, globalSize.restImageSize);
   player.hp = min(player.hp + floor(player.maxHp * 0.3), player.maxHp);
 }
 
@@ -894,8 +905,18 @@ function checkIfEnemyDefeated(index) {
 function drawBuff(target) {
   for (let i = 0; i < target.buffs.length; i++) {
     let buff = target.buffs[i];
-    imageMode(CENTER);
-    image(loadImage(buffLibrary[buff.type].image), target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap, target.y - globalSize.entitySize / 2, globalSize.buffIconSize, globalSize.buffIconSize);
+    let buffImage = images[buff.type];
+
+    if (buffImage) {
+      imageMode(CENTER);
+      image(
+        buffImage,
+        target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap,
+        target.y - globalSize.entitySize / 2,
+        globalSize.buffIconSize,
+        globalSize.buffIconSize
+      );
+    }
   }
 }
 
@@ -918,7 +939,7 @@ function drawPlayer() {
   drawEnergy();
 }
 
-function drawEnergy(){
+function drawEnergy() {
   fill(255); 
   circle(globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize);
   fill(0);
@@ -960,7 +981,7 @@ function checkIfCombatEnded() {
   }
 }
 
-function drawDamageNumber(){
+function drawDamageNumber() {
   for (let i = damageTexts.length - 1; i >= 0; i--) {
     damageTexts[i].update();
     damageTexts[i].display();
@@ -978,11 +999,8 @@ function drawTopBar() {
   partOfText();
 
   imageMode(CENTER);
-  image(map_symbol, globalSize.mapIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize * 2, globalSize.topIconSize * 2);
-
-
-  image(coin_symbol, globalSize.coinIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);
-  textAlign(LEFT, TOP);
+  image(images.mapSymbol, globalSize.mapIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize * 2, globalSize.topIconSize * 2);
+  image(images.coinSymbol, globalSize.coinIconX, globalSize.upperPartHeight / 2, globalSize.topIconSize, globalSize.topIconSize);  textAlign(LEFT, TOP);
   textSize(globalSize.commonTextSize);
   fill('gold');
   text(player.money, globalSize.moneyTextX, globalSize.topBarTextY);
@@ -1072,7 +1090,7 @@ function createMap() {
   // 3. Backward validation (mark unreachable nodes)
   for (let row = 0; row < MAPROW-1; row++) {
     for (let col = 0; col < 5; col++) {
-      if (row === 0){
+      if (row === 0) {
         continue;
       }  // First row is always accessible
 
@@ -1128,18 +1146,21 @@ function drawMap() {
   for (let colon = 0; colon < 5; colon++) {
     for (let row = 0; row < MAPROW; row++) {
       let paths = mapList[colon][row][3];
-      if (paths){
+
+      if (paths) {
         for (let i = 0; i < paths.length; i++) {
           let nextColon = colon + paths[i];
           let nextRow = row + 1;
 
           if (nextColon >= 0 && nextColon < 5 && nextRow >= 0 && nextRow < MAPROW) {
-            line(
-              mapList[colon][row][1] + cellSize / 2,
-              mapList[colon][row][2] + cellSize / 2,
-              mapList[nextColon][nextRow][1] + cellSize / 2,
-              mapList[nextColon][nextRow][2] + cellSize / 2
-            );
+            if (mapList[nextColon][nextRow][3]) {
+              line(
+                mapList[colon][row][1] + cellSize / 2,
+                mapList[colon][row][2] + cellSize / 2,
+                mapList[nextColon][nextRow][1] + cellSize / 2,
+                mapList[nextColon][nextRow][2] + cellSize / 2
+              );
+            }
           }
         }
       }
@@ -1153,33 +1174,22 @@ function drawMap() {
       let x = mapList[colon][row][1];
       let y = mapList[colon][row][2];
       let paths = mapList[colon][row][3];
-      if (paths){
-        if(row > 1){
-        
-          if (mapList[colon][row-1][3].length < 1){
+
+      if (paths) {
+        if (row > 1) {
+          if (!mapList[colon][row - 1][3] || mapList[colon][row - 1][3].length < 1) {
             continue;
           }
         }
 
         noStroke();
 
-        if (roomType === 'combat') {
-          fill(200, 0, 0);
-        }
-        else if (roomType === 'rest') {
-          fill(0, 200, 0);
-        }
-        else if (roomType === 'shop') {
-          fill(0, 0, 200);
-        }
-        else if (roomType === 'elite') {
-          fill(200, 0, 200);
-        }
-        else if (roomType === 'event') {
-          fill(200, 200, 0);
-        }
+        let roomImage = images[roomType];
 
-        rect(x, y, cellSize, cellSize);
+        if (roomImage) {
+          imageMode(CORNER);
+          image(roomImage, x, y, cellSize, cellSize);
+        }
 
         // clickable room highlight
         if (isMapRoomClickable(colon, row)) {
@@ -1196,23 +1206,17 @@ function drawMap() {
           strokeWeight(3+sin(frameCount*0.05));
           rect(x - 6, y - 6, cellSize + 12, cellSize + 12);
         }
-
-        fill(0);
-        noStroke();
-        textAlign(CENTER, CENTER);
-        textSize(globalSize.commonTextSize);
-        text(roomType, x + cellSize / 2, y + cellSize / 2);
       }
     }
   }
 
-  if (mapCellOverEdge()){
+  if (mapCellOverEdge()) {
     for (let colon = 0; colon < 5; colon++) {
       for (let row = 0; row < MAPROW; row++) {   
-        if (mapList[4][4][2] < 100){
+        if (mapList[4][4][2] < 100) {
           mapList[colon][row][2] += 3;
         }
-        else{
+        else {
           mapList[colon][row][2] -= 3;
         }
       }
@@ -1222,7 +1226,7 @@ function drawMap() {
   fill(255);
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
-  text('Map: choose a connected room on the next floor', width / 2, upperPartHeight / 2);
+  text('Map: choose a connected room on the next floor', width / 2, upperPartHeight + globalSize.lineGap);
 }
 
 function displayDiscardPile() {
@@ -1396,7 +1400,7 @@ function drawRewardScreen() {
   }
 }
 
-function drawSkipButton(){
+function drawSkipButton() {
   push();
   fill(180);
   stroke(0);
@@ -1428,7 +1432,7 @@ function mousePressed() {
   }
 
   if (onMapSymbol()) {
-    if (gamemode !== 'map'){
+    if (gamemode !== 'map') {
       gamemode = 'map';
       return;
     }
@@ -1695,6 +1699,7 @@ function updateResponsiveUi() {
 
   let entityAreaHeight = battleAreaHeight * 0.35;
   let entitySize = min(width * 0.1, entityAreaHeight * 0.5);
+  
 
   globalSize = {
 
