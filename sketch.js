@@ -275,10 +275,10 @@ const enemyLibrary = {
     createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
-        return {attack: 6};
+        dealDamage(player, 10);
       }
       if (intentType === 'buff_self') {
-        return {buff_self: {type: 'strength', stacks: 5}};
+        applyBuff(this, 'strenth', 4);
       }
     }
 
@@ -291,13 +291,13 @@ const enemyLibrary = {
     createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
-        this.intent = {attack: 8};
+        dealDamage.apply(player, 12);
       }
       if (intentType === 'buff_self') {
-        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+        applyBuff(this, 'strenth', 4);
       }
       if (intentType === 'buff_player') {
-        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+        applyBuff(player, 'weak', 5);
       }
     }
   },
@@ -310,13 +310,13 @@ const enemyLibrary = {
     createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
-        this.intent = {attack: 12};
+        dealDamage.apply(player, 12);
       }
       if (intentType === 'buff_self') {
-        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+        applyBuff(this, 'strength', 5);
       }
       if (intentType === 'buff_player') {
-        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+        applyBuff(player, 'weak', 5);
       }
     }
   },
@@ -329,13 +329,13 @@ const enemyLibrary = {
     createIntent: function() {
       let intentType = random(['attack', 'buff_self', 'buff_player']);
       if (intentType === 'attack') {
-        this.intent = {attack: 15};
+        dealDamage.apply(player, 15);
       }
       if (intentType === 'buff_self') {
-        this.intent = {buff_self: {type: 'strength', stacks: 5}};
+        applyBuff(this, 'strength', 5);
       }
       if (intentType === 'buff_player') {
-        this.intent = {buff_player: {type: 'strength', stacks: 5}};
+        applyBuff(player, 'strength', 5);
       }
     }
   }
@@ -471,9 +471,11 @@ class Enemy {
     this.kind = data.kind;
     this.hp = data.hp;
     this.maxHp = data.hp;
+    this.image = data.image;
+    this.block = 0;
     this.intent = {};
     this.createIntent = data.createIntent;
-    this.x = width / 4 *3;
+    this.x = width * 0.75 + (i - (enemies.length - 1) / 2) * globalSize.enemyGap;
     this.y = height / 2;
     this.buffs = [];
   }
@@ -653,9 +655,9 @@ function dealDamage(target, amount) {
   if (!target) {
     return;
   }
-
-  target.hp -= amount;
-  displayDamageText(amount, target);
+  let damageAfterBlock = max(amount - target.block, 0);
+  target.hp -= damageAfterBlock;
+  displayDamageText(damageAfterBlock, target);
 
   if (target.hp < 0) {
     target.hp = 0;
@@ -733,7 +735,7 @@ function enemyTurn() {
   for (let i = 0; i < enemies.length; i++) { 
     let enemy = enemies[i];
 
-    enemy.createIntent();
+    enemy.createIntent(); 
 
     if (enemy.intent.buff_self) {
       let existingBuff = enemy.buffs.find(buff => buff.type === enemy.intent.buff.type);
