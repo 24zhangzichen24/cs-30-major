@@ -80,10 +80,9 @@ const cardLibrary = {
     rarity: 'original',
     category: 'attack',
     description: 'Deal 6 damage',
-    effect: [{
-      type: 'damage',
-      value: 6
-    }],
+    playEffect: function(target) {
+      dealDamage(target, 6);
+    },
     image: 'strike.png'
   },
 
@@ -93,10 +92,9 @@ const cardLibrary = {
     rarity: 'original',
     category: 'skill',
     description: 'Gain 5 block',
-    effect: [{
-      type: 'block',
-      value: 5
-    }],
+    playEffect: function() {
+      gainBlock(5);
+    },
     image: 'defend.png'
   },
 
@@ -106,10 +104,9 @@ const cardLibrary = {
     rarity: 'rare',
     category: 'attack',
     description: 'Deal 15 damage',
-    effect: [{
-      type: 'damage',
-      value: 15
-    }],
+    playEffect: function(target) {
+      dealDamage(target, 15);
+    },
     image: 'bash.png'
   },
 
@@ -119,10 +116,9 @@ const cardLibrary = {
     rarity: 'legendary',
     category: 'ability',
     description: 'Heal 4 HP',
-    effect: [{
-      type: 'heal',
-      value: 4
-    }],
+    playEffect: function() {
+      healPlayer(4);
+    },
     image: 'heal.png'
   },
 
@@ -132,10 +128,10 @@ const cardLibrary = {
     rarity: 'rare',
     category: 'attack',
     description: 'Deal 8 damage. Gain 5 block.',
-    effect: [
-      { type: 'damage', value: 8 },
-      { type: 'block', value: 5 }
-    ]
+    playEffect: function(target) {
+      dealDamage(target, 8);
+      gainBlock(5);
+    }
   },
   poisonStab: {
     name: 'Poison Stab',
@@ -143,10 +139,10 @@ const cardLibrary = {
     rarity: 'common',
     category: 'attack',
     description: 'Deal 4 damage. Apply 2 poison.',
-    effect: [
-      { type: 'damage', value: 4 },
-      { type: 'buff', value: { type: 'poison', stacks: 2 } }
-    ],
+    playEffect: function(target) {
+      dealDamage(target, 4);
+      applyBuff(target, 'poison', 2);
+    },
     image: 'poison_stab.png'
   },
   rummage: {
@@ -155,9 +151,9 @@ const cardLibrary = {
     rarity: 'common',
     category: 'skill',
     description: 'Draw 2 cards from the deck.',
-    effect: [
-      { type: 'draw', value: 2 }
-    ],
+    playEffect: function() {
+      drawCards(2);
+    },
     image: 'rummage.png'
   }
 };
@@ -390,7 +386,7 @@ class Card {
     this.rarity = data.rarity;
     this.category = data.category;
     this.description = data.description;
-    this.effects = Array.isArray(data.effect) ? data.effect : [data.effect];
+    this.playEffect = data.playEffect;
     this.image = data.image;
 
     this.x = 0;
@@ -645,45 +641,52 @@ function playCard(index, target) {
 
   player.energy -= card.cost;
 
-  for (let i = 0; i < card.effects.length; i++) {
-    resolveEffect(card.effects[i], target);
+  if (card.playEffect) {
+    card.playEffect(target);
   }
 
   foldingCards(index);
   return true;
 }
 
-function resolveEffect(effect, target) {
-  if (effect.type === 'damage') {
-    if (target) {
-      target.hp -= effect.value;
-      displayDamageText(effect.value, target);
-      if (target.hp < 0) {
-        target.hp = 0;
-      }
-    }
-
-  } 
-  else if (effect.type === 'block') {
-    player.block += effect.value;
-  } 
-  else if (effect.type === 'heal') {
-    player.hp += effect.value;
-    player.hp = min(player.hp, player.maxHp);
-  } 
-  else if (effect.type === 'draw') {
-    drawingCards(effect.value);
+function dealDamage(target, amount) {
+  if (!target) {
+    return;
   }
-  else if (effect.type === 'buff') {
-    if (target) {
-      let existingBuff = target.buffs.find(buff => buff.type === effect.value.type);
-      if (existingBuff) {
-        existingBuff.stacks += effect.value.stacks;
-      }
-      else {
-        target.buffs.push({ type: effect.value.type, stacks: effect.value.stacks });
-      }
-    }
+
+  target.hp -= amount;
+  displayDamageText(amount, target);
+
+  if (target.hp < 0) {
+    target.hp = 0;
+  }
+}
+
+function gainBlock(amount) {
+  player.block += amount;
+}
+
+function healPlayer(amount) {
+  player.hp += amount;
+  player.hp = min(player.hp, player.maxHp);
+}
+
+function drawCards(amount) {
+  drawingCards(amount);
+}
+
+function applyBuff(target, buffType, stacks) {
+  if (!target) {
+    return;
+  }
+
+  let existingBuff = target.buffs.find(buff => buff.type === buffType);
+
+  if (existingBuff) {
+    existingBuff.stacks += stacks;
+  }
+  else {
+    target.buffs.push({ type: buffType, stacks: stacks });
   }
 }
 
