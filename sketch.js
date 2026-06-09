@@ -347,6 +347,7 @@ const enemyLibrary = {
 // ====================
 
 let images = {};
+let sounds = {};
 
 function preload() {
   images.mapSymbol = loadImage('assets/images/map_symbol.png');
@@ -365,10 +366,29 @@ function preload() {
   images.shop = loadImage('assets/images/shop.png');
 
   preloadCardImages();
+  preloadEnemyImages();
+  preloadSound();
 }
 
 function preloadCardImages() {
-  //load card images
+  for (let cardId in cardLibrary) {
+    let cardData = cardLibrary[cardId];
+    if (cardData.image) {
+      images[cardId] = loadImage('assets/images/cards/' + cardData.image);
+    }
+  }
+}
+
+function preloadEnemyImages() {
+  for (let enemyId in enemyLibrary) {
+    let enemyData = enemyLibrary[enemyId];
+    if (enemyData.image) {
+      images[enemyId] = loadImage('assets/images/enemies/' + enemyData.image);
+    }
+  }
+}
+function preloadSound() {
+
 }
 
 
