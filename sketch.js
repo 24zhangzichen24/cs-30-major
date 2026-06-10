@@ -353,17 +353,17 @@ function preload() {
   images.mapSymbol = loadImage('assets/images/map_symbol.png');
   images.coinSymbol = loadImage('assets/images/coin_symbol.png');
 
-  images.strength = loadImage('assets/images/strength.png');
-  images.dexterity = loadImage('assets/images/dexterity.png');
-  images.vulnerable = loadImage('assets/images/vulnerable.png');
-  images.weak = loadImage('assets/images/weak.png');
-  images.poison = loadImage('assets/images/poison.png');
+  images.strength = loadImage('assets/images/buffs/strength.png');
+  images.dexterity = loadImage('assets/images/buffs/dexterity.png');
+  images.vulnerable = loadImage('assets/images/buffs/vulnerable.png');
+  images.weak = loadImage('assets/images/buffs/weak.png');
+  images.poison = loadImage('assets/images/buffs/poison.png');
 
-  images.combat = loadImage('assets/images/combat.png');
-  images.elite = loadImage('assets/images/elite.png');
-  images.event = loadImage('assets/images/event.png');
-  images.rest = loadImage('assets/images/rest.png');
-  images.shop = loadImage('assets/images/shop.png');
+  images.combat = loadImage('assets/images/maps/combat.png');
+  images.elite = loadImage('assets/images/maps/elite.png');
+  images.event = loadImage('assets/images/maps/event.png');
+  images.rest = loadImage('assets/images/maps/rest.png');
+  images.shop = loadImage('assets/images/maps/shop.png');
 
   preloadCardImages();
   preloadEnemyImages();
