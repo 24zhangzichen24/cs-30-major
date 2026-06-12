@@ -352,7 +352,9 @@ const enemyLibrary = {
 
 let images = {};
 let sounds = {};
+let soundVolumes = {};
 let ifAudioStarted = false;
+let ifBgmFadingOut = false;
 
 function preload() {
   images.mapSymbol = loadImage('assets/images/map_symbol.png');
@@ -394,6 +396,50 @@ function preloadEnemyImages() {
   }
 }
 function preloadSound() {
+  soundFormats('ogg', 'wav', 'mp3');
+
+  // Your battle music file should be exactly:
+  // Your battle background music file must be here:
+  // assets/audio/bgm.ogg
+  sounds.bgm = loadSound('assets/audio/bgm.ogg');
+
+  sounds.cardDraw = loadSound('assets/audio/card_draw.wav');
+  sounds.cardPlay = loadSound('assets/audio/card_play.wav');
+  sounds.hit = loadSound('assets/audio/attack_hit.wav');
+  sounds.block = loadSound('assets/audio/block_gain.wav');
+  sounds.enemyAttack = loadSound('assets/audio/enemy_attack.wav');
+  sounds.coin = loadSound('assets/audio/coin_pickup.wav');
+  sounds.buttonClick = loadSound('assets/audio/button_click.wav');
+  sounds.victory = loadSound('assets/audio/victory.wav');
+  sounds.heal = loadSound('assets/audio/heal.wav');
+  sounds.damageTaken = loadSound('assets/audio/damage_taken.wav');
+  sounds.mapClick = loadSound('assets/audio/map_open.wav');
+  sounds.roomSelect = loadSound('assets/audio/room_select.wav');
+  sounds.endTurn = loadSound('assets/audio/end_turn_soft.wav');
+
+  // These names match the places where the rest of the code calls playSound().
+  sounds.cardSelect = sounds.buttonClick;
+  sounds.reward = sounds.coin;
+
+  // Lower numbers make the effect quieter. This is the easiest place to tune sound balance.
+  soundVolumes = {
+    cardDraw: 0.22,
+    cardPlay: 0.28,
+    hit: 0.32,
+    block: 0.24,
+    enemyAttack: 0.30,
+    coin: 0.25,
+    buttonClick: 0.08,
+    victory: 0.25,
+    heal: 0.24,
+    damageTaken: 0.28,
+    mapClick: 0.16,
+    roomSelect: 0.16,
+    cardSelect: 0.06,
+    endTurn: 0.12,
+    reward: 0.22,
+    bgm: 0.18
+  };
 }
 
 function startAudioOnce() {
@@ -402,11 +448,132 @@ function startAudioOnce() {
       userStartAudio();
     }
     ifAudioStarted = true;
+    updateBgm();
   }
 }
 
-function playSound(soundName) {
-  
+function playSound(soundName, volumeMultiplier = 1) {
+  if (!ifAudioStarted) {
+    return;
+  }
+
+  let sound = sounds[soundName];
+
+  if (!sound) {
+    return;
+  }
+
+  if (typeof sound.isLoaded === 'function' && !sound.isLoaded()) {
+    return;
+  }
+
+  let baseVolume = soundVolumes[soundName];
+  if (baseVolume === undefined) {
+    baseVolume = 0.2;
+  }
+
+  if (typeof sound.setVolume === 'function') {
+    sound.setVolume(baseVolume * volumeMultiplier);
+  }
+
+  if (typeof sound.stop === 'function') {
+    sound.stop();
+  }
+
+  sound.play();
+}
+
+function shouldPlayBattleBgm() {
+  return gamemode === 'combat' ||
+         gamemode === 'checkdiscardPile' ||
+         gamemode === 'checkdrawPile';
+}
+
+function updateBgm() {
+  if (!ifAudioStarted) {
+    return;
+  }
+
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  if (typeof bgm.isLoaded === 'function' && !bgm.isLoaded()) {
+    return;
+  }
+
+  if (shouldPlayBattleBgm()) {
+    startBattleBgm();
+  }
+  else {
+    stopBattleBgm();
+  }
+}
+
+function startBattleBgm() {
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  let bgmVolume = soundVolumes.bgm;
+  if (bgmVolume === undefined) {
+    bgmVolume = 0.18;
+  }
+
+  if (typeof bgm.isPlaying === 'function' && bgm.isPlaying()) {
+    if (typeof bgm.setVolume === 'function') {
+      bgm.setVolume(bgmVolume, 0.5);
+    }
+    ifBgmFadingOut = false;
+    return;
+  }
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(0);
+  }
+
+  bgm.loop();
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(bgmVolume, 1.0);
+  }
+
+  ifBgmFadingOut = false;
+}
+
+function stopBattleBgm() {
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  if (typeof bgm.isPlaying !== 'function' || !bgm.isPlaying()) {
+    return;
+  }
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(0, 0.8);
+  }
+
+  if (!ifBgmFadingOut) {
+    ifBgmFadingOut = true;
+
+    setTimeout(function() {
+      if (!shouldPlayBattleBgm() &&
+          sounds.bgm &&
+          typeof sounds.bgm.isPlaying === 'function' &&
+          sounds.bgm.isPlaying()) {
+        sounds.bgm.stop();
+      }
+
+      ifBgmFadingOut = false;
+    }, 850);
+  }
 }
 
 
@@ -567,6 +734,7 @@ function draw() {
     drawRewardScreen();
   }
 
+  updateBgm();
   drawDamageNumber();
   drawTopBar();
 }
@@ -642,10 +810,13 @@ function endTurn() {
 }
 
 function drawingCards(num) {
+  let ifDrewCard = false;
+
   for (let i = 0; i < num; i++) {
     if (drawCardsPile.length > 0) {
       let drawnCard = drawCardsPile.pop();
       holdCards.push(drawnCard);
+      ifDrewCard = true;
     } 
     else {
       if (foldCardsPile.length > 0) {
@@ -655,8 +826,13 @@ function drawingCards(num) {
 
         let drawnCard = drawCardsPile.pop();
         holdCards.push(drawnCard);
+        ifDrewCard = true;
       }
     }
+  }
+
+  if (ifDrewCard) {
+    playSound('cardDraw');
   }
 }
 
@@ -705,7 +881,12 @@ function dealDamage(target, amount) {
   displayDamageText(damageAfterBlock, target);
 
   if (damageAfterBlock > 0) {
-    playSound('hit');
+    if (target === player) {
+      playSound('damageTaken');
+    }
+    else {
+      playSound('hit');
+    }
   }
   else {
     playSound('block');
@@ -724,6 +905,7 @@ function gainBlock(amount) {
 function healPlayer(amount) {
   player.hp += amount;
   player.hp = min(player.hp, player.maxHp);
+  playSound('heal');
 }
 
 function drawCards(amount) {
@@ -803,6 +985,7 @@ function enemyTurn() {
       applyBuff(player, enemy.intent.buff_player.type, enemy.intent.buff_player.stacks);
     }
     else if (enemy.intent.attack) {
+      playSound('enemyAttack');
       dealDamage(player, enemy.intent.attack);
     }
 
@@ -1042,6 +1225,7 @@ function checkIfCombatEnded() {
     gamemode = 'PlayerDefeated';
   }
   else if (enemies.length === 0) {
+    playSound('victory');
     gamemode = 'reward';
     generateRewards();
   }
@@ -1347,6 +1531,8 @@ function enterMapRoom(colon, row) {
     return;
   }
 
+  playSound('roomSelect');
+
   currentMapColon = colon;
   currentMapRow = row;
 
@@ -1510,19 +1696,20 @@ function mousePressed() {
       return;
     }
     if (gamemode === 'reward') {
+      playSound('buttonClick');
       gamemode = 'map';
       return;
     }
   }
 
   if (onMapSymbol()) {
-    playSound('mapClick');
-
     if (gamemode !== 'map') {
+      playSound('mapClick');
       gamemode = 'map';
       return;
     }
     else {
+      playSound('buttonClick', 0.5);
       gamemode = presentGamemode;
       return;
     }
@@ -1643,15 +1830,18 @@ function keyPressed() {
       endTurn();
     }
     if (gamemode === 'reward') {
+      playSound('buttonClick');
       gamemode = 'map';
     }
   }
 
   if (key === 'm' || key === 'M') {
     if (gamemode === 'map') {
+      playSound('buttonClick', 0.5);
       gamemode = 'combat';
     }
     else {
+      playSound('mapClick');
       gamemode = 'map';
     }
   }
@@ -1890,8 +2080,6 @@ function getRewardIndexAtMouse() {
 }
 
 function claimReward(index) {
-  playSound('reward');
-
   if (index < 0 || index >= rewardOptions.length) {
     return;
   }
@@ -1900,12 +2088,15 @@ function claimReward(index) {
 
   if (reward.type === 'card') {
     deck.push(reward.cardId);
+    playSound('cardDraw');
   }
   else if (reward.type === 'coin') {
     player.money += reward.amount;
+    playSound('coin');
   }
   else if (reward.type === 'potion') {
     potionBag.push(reward);
+    playSound('heal');
   }
 
   rewardOptions = [];
