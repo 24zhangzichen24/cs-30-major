@@ -372,6 +372,10 @@ function preload() {
   images.rest = loadImage('assets/images/maps/rest.png');
   images.shop = loadImage('assets/images/maps/shop.png');
 
+  images.combatBackground = loadImage('assets/images/backgrounds/combat_background.png');
+  images.energyIcon = loadImage('assets/images/ui/energy_icon.png');
+  images.skipIcon = loadImage('assets/images/ui/skip_icon.png');
+  images.blockIcon = loadImage('assets/images/ui/block_icon.png');
 
   // preloadCardImages();
   // preloadEnemyImages();
@@ -398,9 +402,6 @@ function preloadEnemyImages() {
 function preloadSound() {
   soundFormats('ogg', 'wav', 'mp3');
 
-  // Your battle music file should be exactly:
-  // Your battle background music file must be here:
-  // assets/audio/bgm.ogg
   sounds.bgm = loadSound('assets/audio/bgm.ogg');
 
   sounds.cardDraw = loadSound('assets/audio/card_draw.wav');
@@ -417,11 +418,9 @@ function preloadSound() {
   sounds.roomSelect = loadSound('assets/audio/room_select.wav');
   sounds.endTurn = loadSound('assets/audio/end_turn_soft.wav');
 
-  // These names match the places where the rest of the code calls playSound().
   sounds.cardSelect = sounds.buttonClick;
   sounds.reward = sounds.coin;
 
-  // Lower numbers make the effect quieter. This is the easiest place to tune sound balance.
   soundVolumes = {
     cardDraw: 0.22,
     cardPlay: 0.28,
@@ -575,7 +574,6 @@ function stopBattleBgm() {
     }, 850);
   }
 }
-
 
 
 // ====================
@@ -792,6 +790,13 @@ function drawEvent() {
 function startTurn() {
   player.energy = player.maxEnergy;
   player.block = 0;
+
+  processStartOfTurnBuffs(player);
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    processStartOfTurnBuffs(enemies[i]);
+  }
+  removeDefeatedEnemies();
+
   drawingCards(numberOfDrawing_round);
   createEnemyIntents();
 }
@@ -868,14 +873,68 @@ function playCard(index, target) {
   return true;
 }
 
-function dealDamage(target, amount) {
+function getBuffStacks(target, buffType) {
+  if (!target || !target.buffs) {
+    return 0;
+  }
+
+  let existingBuff = target.buffs.find(buff => buff.type === buffType);
+  if (!existingBuff) {
+    return 0;
+  }
+
+  return existingBuff.stacks;
+}
+
+function reduceBuff(target, buffType, amount) {
+  if (!target || !target.buffs) {
+    return;
+  }
+
+  for (let i = target.buffs.length - 1; i >= 0; i--) {
+    if (target.buffs[i].type === buffType) {
+      target.buffs[i].stacks -= amount;
+
+      if (target.buffs[i].stacks <= 0) {
+        target.buffs.splice(i, 1);
+      }
+
+      return;
+    }
+  }
+}
+
+function getModifiedDamage(baseAmount, source, target) {
+  let finalDamage = baseAmount;
+
+  finalDamage += getBuffStacks(source, 'strength');
+
+  if (getBuffStacks(source, 'weak') > 0) {
+    finalDamage *= 0.75;
+  }
+
+  if (getBuffStacks(target, 'vulnerable') > 0) {
+    finalDamage *= 1.5;
+  }
+
+  finalDamage = floor(finalDamage);
+  return max(finalDamage, 0);
+}
+
+function getModifiedBlock(baseAmount, target) {
+  let finalBlock = baseAmount + getBuffStacks(target, 'dexterity');
+  return max(floor(finalBlock), 0);
+}
+
+function dealDamage(target, amount, source = player) {
   if (!target) {
     return;
   }
 
+  let finalDamage = getModifiedDamage(amount, source, target);
   let targetBlock = target.block || 0;
-  let damageAfterBlock = max(amount - targetBlock, 0);
-  target.block = max(targetBlock - amount, 0);
+  let damageAfterBlock = max(finalDamage - targetBlock, 0);
+  target.block = max(targetBlock - finalDamage, 0);
 
   target.hp -= damageAfterBlock;
   displayDamageText(damageAfterBlock, target);
@@ -892,13 +951,22 @@ function dealDamage(target, amount) {
     playSound('block');
   }
 
+  if (getBuffStacks(source, 'weak') > 0) {
+    reduceBuff(source, 'weak', 1);
+  }
+
+  if (damageAfterBlock > 0 && getBuffStacks(target, 'vulnerable') > 0) {
+    reduceBuff(target, 'vulnerable', 1);
+  }
+
   if (target.hp < 0) {
     target.hp = 0;
   }
 }
 
-function gainBlock(amount) {
-  player.block += amount;
+function gainBlock(amount, target = player) {
+  let finalBlock = getModifiedBlock(amount, target);
+  target.block += finalBlock;
   playSound('block');
 }
 
@@ -917,6 +985,10 @@ function applyBuff(target, buffType, stacks) {
     return;
   }
 
+  if (!target.buffs) {
+    target.buffs = [];
+  }
+
   let existingBuff = target.buffs.find(buff => buff.type === buffType);
 
   if (existingBuff) {
@@ -924,6 +996,40 @@ function applyBuff(target, buffType, stacks) {
   }
   else {
     target.buffs.push({ type: buffType, stacks: stacks });
+  }
+}
+
+function processStartOfTurnBuffs(target) {
+  if (!target) {
+    return;
+  }
+
+  let poisonStacks = getBuffStacks(target, 'poison');
+
+  if (poisonStacks > 0) {
+    target.hp -= poisonStacks;
+    displayDamageText(poisonStacks, target);
+
+    if (target === player) {
+      playSound('damageTaken');
+    }
+    else {
+      playSound('hit');
+    }
+
+    reduceBuff(target, 'poison', 1);
+
+    if (target.hp < 0) {
+      target.hp = 0;
+    }
+  }
+}
+
+function removeDefeatedEnemies() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    if (enemies[i].hp <= 0) {
+      enemies.splice(i, 1);
+    }
   }
 }
 
@@ -986,7 +1092,7 @@ function enemyTurn() {
     }
     else if (enemy.intent.attack) {
       playSound('enemyAttack');
-      dealDamage(player, enemy.intent.attack);
+      dealDamage(player, enemy.intent.attack, enemy);
     }
 
     enemy.intent = {};
@@ -1049,11 +1155,22 @@ function skipButton() {
 // ====================
 
 function drawCombatScene() {
+  drawCombatBackground();
   drawPlayer();
   drawEnemies();
   drawHand();
   checkIfCombatEnded();
   skipButton();
+}
+
+function drawCombatBackground() {
+  if (images.combatBackground) {
+    imageMode(CORNER);
+    image(images.combatBackground, 0, globalSize.upperPartHeight, width, height - globalSize.upperPartHeight);
+  }
+  else {
+    background(70);
+  }
 }
 
 function drawHand() {
@@ -1101,6 +1218,8 @@ function drawEnemyImage(index, x, y) {
   rect(enemy.x - globalSize.entitySize / 2, enemy.y - globalSize.entitySize / 2, globalSize.entitySize, globalSize.entitySize);
   // image(enemy.image, enemy.x, enemy.y);
   pop();
+
+  drawBuff(enemy);
 }
 
 function drawEnemyIntent(index) {
@@ -1150,20 +1269,38 @@ function checkIfEnemyDefeated(index) {
 }
 
 function drawBuff(target) {
+  if (!target.buffs) {
+    return;
+  }
+
   for (let i = 0; i < target.buffs.length; i++) {
     let buff = target.buffs[i];
     let buffImage = images[buff.type];
+    let buffX = target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap;
+    let buffY = target.y - globalSize.entitySize / 2;
 
     if (buffImage) {
       imageMode(CENTER);
       image(
         buffImage,
-        target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap,
-        target.y - globalSize.entitySize / 2,
+        buffX,
+        buffY,
         globalSize.buffIconSize,
         globalSize.buffIconSize
       );
     }
+    else {
+      fill(50);
+      circle(buffX, buffY, globalSize.buffIconSize);
+    }
+
+    fill(255);
+    stroke(0);
+    strokeWeight(globalSize.normalStrokeWeight);
+    textAlign(CENTER, CENTER);
+    textSize(globalSize.commonTextSize * 0.7);
+    text(buff.stacks, buffX + globalSize.buffIconSize * 0.35, buffY + globalSize.buffIconSize * 0.35);
+    noStroke();
   }
 }
 
@@ -1180,21 +1317,46 @@ function drawPlayer() {
   drawPlayerHP(playerX, playerY);
   changeOfPlayerHP();
 
-  fill(255);
-  textAlign(LEFT, TOP);
-  textSize(globalSize.commonTextSize);
-  text(`Block: ${player.block}`, globalSize.screenPadding, globalSize.upperPartHeight + globalSize.lineGap * 3);
+  if (player.block > 0) {
+  imageMode(CENTER);
 
+  image(
+    images.blockIcon,
+    playerX,
+    playerY - globalSize.entitySize * 0.75,
+    globalSize.energyIconSize,
+    globalSize.energyIconSize
+  );
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(globalSize.commonTextSize);
+  text(
+    player.block,
+    playerX,
+    playerY - globalSize.entitySize * 0.75
+  );
+}
   drawEnergy();
 }
 
 function drawEnergy() {
-  fill(255); 
-  circle(globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize);
-  fill(0);
+  if (images.energyIcon) {
+    imageMode(CENTER);
+    image(images.energyIcon, globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize, globalSize.energyIconSize);
+  }
+  else {
+    fill(255); 
+    circle(globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize);
+  }
+
+  fill(255);
+  stroke(0);
+  strokeWeight(globalSize.normalStrokeWeight);
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
   text(`${player.energy} / ${player.maxEnergy}`, globalSize.energyIconX, globalSize.energyIconY);
+  noStroke();
 } 
 
 function drawPlayerHP(x, y) {
@@ -1224,7 +1386,7 @@ function checkIfCombatEnded() {
   if (player.hp <= 0) {
     gamemode = 'PlayerDefeated';
   }
-  else if (enemies.length === 0) {
+  else if (enemies.length === 0 && gamemode === 'combat') {
     playSound('victory');
     gamemode = 'reward';
     generateRewards();
@@ -1531,8 +1693,6 @@ function enterMapRoom(colon, row) {
     return;
   }
 
-  playSound('roomSelect');
-
   currentMapColon = colon;
   currentMapRow = row;
 
@@ -1670,15 +1830,25 @@ function drawRewardScreen() {
 
 function drawSkipButton() {
   push();
-  fill(180);
-  stroke(0);
+  fill(180, 165, 135, 230);
+  stroke(45, 35, 25);
   strokeWeight(globalSize.normalStrokeWeight);
   rect(skipButtonX, skipButtonY, skipButtonWidth, skipButtonHeight, globalSize.buttonCornerRadius);
-  fill(0);
+
+  let iconSize = skipButtonHeight * 0.7;
+  let iconX = skipButtonX + iconSize * 0.85;
+  let iconY = skipButtonY + skipButtonHeight / 2;
+
+  if (images.skipIcon) {
+    imageMode(CENTER);
+    image(images.skipIcon, iconX, iconY, iconSize, iconSize);
+  }
+
+  fill(20);
   noStroke();
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
-  text('Skip (E)', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
+  text('Skip (E)', skipButtonX + skipButtonWidth * 0.58, skipButtonY + skipButtonHeight / 2);
   pop();
 }
 
@@ -1696,20 +1866,19 @@ function mousePressed() {
       return;
     }
     if (gamemode === 'reward') {
-      playSound('buttonClick');
       gamemode = 'map';
       return;
     }
   }
 
   if (onMapSymbol()) {
+    playSound('mapClick');
+
     if (gamemode !== 'map') {
-      playSound('mapClick');
       gamemode = 'map';
       return;
     }
     else {
-      playSound('buttonClick', 0.5);
       gamemode = presentGamemode;
       return;
     }
@@ -1830,18 +1999,15 @@ function keyPressed() {
       endTurn();
     }
     if (gamemode === 'reward') {
-      playSound('buttonClick');
       gamemode = 'map';
     }
   }
 
   if (key === 'm' || key === 'M') {
     if (gamemode === 'map') {
-      playSound('buttonClick', 0.5);
       gamemode = 'combat';
     }
     else {
-      playSound('mapClick');
       gamemode = 'map';
     }
   }
