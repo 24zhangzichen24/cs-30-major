@@ -352,7 +352,9 @@ const enemyLibrary = {
 
 let images = {};
 let sounds = {};
+let soundVolumes = {};
 let ifAudioStarted = false;
+let ifBgmFadingOut = false;
 
 function preload() {
   images.mapSymbol = loadImage('assets/images/map_symbol.png');
@@ -370,6 +372,10 @@ function preload() {
   images.rest = loadImage('assets/images/maps/rest.png');
   images.shop = loadImage('assets/images/maps/shop.png');
 
+  images.combatBackground = loadImage('assets/images/backgrounds/combat_background.png');
+  images.energyIcon = loadImage('assets/images/ui/energy_icon.png');
+  images.skipIcon = loadImage('assets/images/ui/skip_icon.png');
+  images.blockIcon = loadImage('assets/images/ui/block_icon.png');
 
   // preloadCardImages();
   // preloadEnemyImages();
@@ -394,6 +400,45 @@ function preloadEnemyImages() {
   }
 }
 function preloadSound() {
+  soundFormats('ogg', 'wav', 'mp3');
+
+  sounds.bgm = loadSound('assets/audio/bgm.ogg');
+
+  sounds.cardDraw = loadSound('assets/audio/card_draw.wav');
+  sounds.cardPlay = loadSound('assets/audio/card_play.wav');
+  sounds.hit = loadSound('assets/audio/attack_hit.wav');
+  sounds.block = loadSound('assets/audio/block_gain.wav');
+  sounds.enemyAttack = loadSound('assets/audio/enemy_attack.wav');
+  sounds.coin = loadSound('assets/audio/coin_pickup.wav');
+  sounds.buttonClick = loadSound('assets/audio/button_click.wav');
+  sounds.victory = loadSound('assets/audio/victory.wav');
+  sounds.heal = loadSound('assets/audio/heal.wav');
+  sounds.damageTaken = loadSound('assets/audio/damage_taken.wav');
+  sounds.mapClick = loadSound('assets/audio/map_open.wav');
+  sounds.roomSelect = loadSound('assets/audio/room_select.wav');
+  sounds.endTurn = loadSound('assets/audio/end_turn_soft.wav');
+
+  sounds.cardSelect = sounds.buttonClick;
+  sounds.reward = sounds.coin;
+
+  soundVolumes = {
+    cardDraw: 0.22,
+    cardPlay: 0.28,
+    hit: 0.32,
+    block: 0.24,
+    enemyAttack: 0.30,
+    coin: 0.25,
+    buttonClick: 0.08,
+    victory: 0.25,
+    heal: 0.24,
+    damageTaken: 0.28,
+    mapClick: 0.16,
+    roomSelect: 0.16,
+    cardSelect: 0.06,
+    endTurn: 0.12,
+    reward: 0.22,
+    bgm: 0.18
+  };
 }
 
 function startAudioOnce() {
@@ -402,13 +447,133 @@ function startAudioOnce() {
       userStartAudio();
     }
     ifAudioStarted = true;
+    updateBgm();
   }
 }
 
-function playSound(soundName) {
-  
+function playSound(soundName, volumeMultiplier = 1) {
+  if (!ifAudioStarted) {
+    return;
+  }
+
+  let sound = sounds[soundName];
+
+  if (!sound) {
+    return;
+  }
+
+  if (typeof sound.isLoaded === 'function' && !sound.isLoaded()) {
+    return;
+  }
+
+  let baseVolume = soundVolumes[soundName];
+  if (baseVolume === undefined) {
+    baseVolume = 0.2;
+  }
+
+  if (typeof sound.setVolume === 'function') {
+    sound.setVolume(baseVolume * volumeMultiplier);
+  }
+
+  if (typeof sound.stop === 'function') {
+    sound.stop();
+  }
+
+  sound.play();
 }
 
+function shouldPlayBattleBgm() {
+  return gamemode === 'combat' ||
+         gamemode === 'checkdiscardPile' ||
+         gamemode === 'checkdrawPile';
+}
+
+function updateBgm() {
+  if (!ifAudioStarted) {
+    return;
+  }
+
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  if (typeof bgm.isLoaded === 'function' && !bgm.isLoaded()) {
+    return;
+  }
+
+  if (shouldPlayBattleBgm()) {
+    startBattleBgm();
+  }
+  else {
+    stopBattleBgm();
+  }
+}
+
+function startBattleBgm() {
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  let bgmVolume = soundVolumes.bgm;
+  if (bgmVolume === undefined) {
+    bgmVolume = 0.18;
+  }
+
+  if (typeof bgm.isPlaying === 'function' && bgm.isPlaying()) {
+    if (typeof bgm.setVolume === 'function') {
+      bgm.setVolume(bgmVolume, 0.5);
+    }
+    ifBgmFadingOut = false;
+    return;
+  }
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(0);
+  }
+
+  bgm.loop();
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(bgmVolume, 1.0);
+  }
+
+  ifBgmFadingOut = false;
+}
+
+function stopBattleBgm() {
+  let bgm = sounds.bgm;
+
+  if (!bgm) {
+    return;
+  }
+
+  if (typeof bgm.isPlaying !== 'function' || !bgm.isPlaying()) {
+    return;
+  }
+
+  if (typeof bgm.setVolume === 'function') {
+    bgm.setVolume(0, 0.8);
+  }
+
+  if (!ifBgmFadingOut) {
+    ifBgmFadingOut = true;
+
+    setTimeout(function() {
+      if (!shouldPlayBattleBgm() &&
+          sounds.bgm &&
+          typeof sounds.bgm.isPlaying === 'function' &&
+          sounds.bgm.isPlaying()) {
+        sounds.bgm.stop();
+      }
+
+      ifBgmFadingOut = false;
+    }, 850);
+  }
+}
 
 
 // ====================
@@ -567,6 +732,7 @@ function draw() {
     drawRewardScreen();
   }
 
+  updateBgm();
   drawDamageNumber();
   drawTopBar();
 }
@@ -624,6 +790,13 @@ function drawEvent() {
 function startTurn() {
   player.energy = player.maxEnergy;
   player.block = 0;
+
+  processStartOfTurnBuffs(player);
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    processStartOfTurnBuffs(enemies[i]);
+  }
+  removeDefeatedEnemies();
+
   drawingCards(numberOfDrawing_round);
   createEnemyIntents();
 }
@@ -642,10 +815,13 @@ function endTurn() {
 }
 
 function drawingCards(num) {
+  let ifDrewCard = false;
+
   for (let i = 0; i < num; i++) {
     if (drawCardsPile.length > 0) {
       let drawnCard = drawCardsPile.pop();
       holdCards.push(drawnCard);
+      ifDrewCard = true;
     } 
     else {
       if (foldCardsPile.length > 0) {
@@ -655,8 +831,13 @@ function drawingCards(num) {
 
         let drawnCard = drawCardsPile.pop();
         holdCards.push(drawnCard);
+        ifDrewCard = true;
       }
     }
+  }
+
+  if (ifDrewCard) {
+    playSound('cardDraw');
   }
 }
 
@@ -692,23 +873,90 @@ function playCard(index, target) {
   return true;
 }
 
-function dealDamage(target, amount) {
+function getBuffStacks(target, buffType) {
+  if (!target || !target.buffs) {
+    return 0;
+  }
+
+  let existingBuff = target.buffs.find(buff => buff.type === buffType);
+  if (!existingBuff) {
+    return 0;
+  }
+
+  return existingBuff.stacks;
+}
+
+function reduceBuff(target, buffType, amount) {
+  if (!target || !target.buffs) {
+    return;
+  }
+
+  for (let i = target.buffs.length - 1; i >= 0; i--) {
+    if (target.buffs[i].type === buffType) {
+      target.buffs[i].stacks -= amount;
+
+      if (target.buffs[i].stacks <= 0) {
+        target.buffs.splice(i, 1);
+      }
+
+      return;
+    }
+  }
+}
+
+function getModifiedDamage(baseAmount, source, target) {
+  let finalDamage = baseAmount;
+
+  finalDamage += getBuffStacks(source, 'strength');
+
+  if (getBuffStacks(source, 'weak') > 0) {
+    finalDamage *= 0.75;
+  }
+
+  if (getBuffStacks(target, 'vulnerable') > 0) {
+    finalDamage *= 1.5;
+  }
+
+  finalDamage = floor(finalDamage);
+  return max(finalDamage, 0);
+}
+
+function getModifiedBlock(baseAmount, target) {
+  let finalBlock = baseAmount + getBuffStacks(target, 'dexterity');
+  return max(floor(finalBlock), 0);
+}
+
+function dealDamage(target, amount, source = player) {
   if (!target) {
     return;
   }
 
+  let finalDamage = getModifiedDamage(amount, source, target);
   let targetBlock = target.block || 0;
-  let damageAfterBlock = max(amount - targetBlock, 0);
-  target.block = max(targetBlock - amount, 0);
+  let damageAfterBlock = max(finalDamage - targetBlock, 0);
+  target.block = max(targetBlock - finalDamage, 0);
 
   target.hp -= damageAfterBlock;
   displayDamageText(damageAfterBlock, target);
 
   if (damageAfterBlock > 0) {
-    playSound('hit');
+    if (target === player) {
+      playSound('damageTaken');
+    }
+    else {
+      playSound('hit');
+    }
   }
   else {
     playSound('block');
+  }
+
+  if (getBuffStacks(source, 'weak') > 0) {
+    reduceBuff(source, 'weak', 1);
+  }
+
+  if (damageAfterBlock > 0 && getBuffStacks(target, 'vulnerable') > 0) {
+    reduceBuff(target, 'vulnerable', 1);
   }
 
   if (target.hp < 0) {
@@ -716,14 +964,16 @@ function dealDamage(target, amount) {
   }
 }
 
-function gainBlock(amount) {
-  player.block += amount;
+function gainBlock(amount, target = player) {
+  let finalBlock = getModifiedBlock(amount, target);
+  target.block += finalBlock;
   playSound('block');
 }
 
 function healPlayer(amount) {
   player.hp += amount;
   player.hp = min(player.hp, player.maxHp);
+  playSound('heal');
 }
 
 function drawCards(amount) {
@@ -735,6 +985,10 @@ function applyBuff(target, buffType, stacks) {
     return;
   }
 
+  if (!target.buffs) {
+    target.buffs = [];
+  }
+
   let existingBuff = target.buffs.find(buff => buff.type === buffType);
 
   if (existingBuff) {
@@ -742,6 +996,40 @@ function applyBuff(target, buffType, stacks) {
   }
   else {
     target.buffs.push({ type: buffType, stacks: stacks });
+  }
+}
+
+function processStartOfTurnBuffs(target) {
+  if (!target) {
+    return;
+  }
+
+  let poisonStacks = getBuffStacks(target, 'poison');
+
+  if (poisonStacks > 0) {
+    target.hp -= poisonStacks;
+    displayDamageText(poisonStacks, target);
+
+    if (target === player) {
+      playSound('damageTaken');
+    }
+    else {
+      playSound('hit');
+    }
+
+    reduceBuff(target, 'poison', 1);
+
+    if (target.hp < 0) {
+      target.hp = 0;
+    }
+  }
+}
+
+function removeDefeatedEnemies() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    if (enemies[i].hp <= 0) {
+      enemies.splice(i, 1);
+    }
   }
 }
 
@@ -803,7 +1091,8 @@ function enemyTurn() {
       applyBuff(player, enemy.intent.buff_player.type, enemy.intent.buff_player.stacks);
     }
     else if (enemy.intent.attack) {
-      dealDamage(player, enemy.intent.attack);
+      playSound('enemyAttack');
+      dealDamage(player, enemy.intent.attack, enemy);
     }
 
     enemy.intent = {};
@@ -866,11 +1155,22 @@ function skipButton() {
 // ====================
 
 function drawCombatScene() {
+  drawCombatBackground();
   drawPlayer();
   drawEnemies();
   drawHand();
   checkIfCombatEnded();
   skipButton();
+}
+
+function drawCombatBackground() {
+  if (images.combatBackground) {
+    imageMode(CORNER);
+    image(images.combatBackground, 0, globalSize.upperPartHeight, width, height - globalSize.upperPartHeight);
+  }
+  else {
+    background(70);
+  }
 }
 
 function drawHand() {
@@ -918,6 +1218,8 @@ function drawEnemyImage(index, x, y) {
   rect(enemy.x - globalSize.entitySize / 2, enemy.y - globalSize.entitySize / 2, globalSize.entitySize, globalSize.entitySize);
   // image(enemy.image, enemy.x, enemy.y);
   pop();
+
+  drawBuff(enemy);
 }
 
 function drawEnemyIntent(index) {
@@ -967,20 +1269,38 @@ function checkIfEnemyDefeated(index) {
 }
 
 function drawBuff(target) {
+  if (!target.buffs) {
+    return;
+  }
+
   for (let i = 0; i < target.buffs.length; i++) {
     let buff = target.buffs[i];
     let buffImage = images[buff.type];
+    let buffX = target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap;
+    let buffY = target.y - globalSize.entitySize / 2;
 
     if (buffImage) {
       imageMode(CENTER);
       image(
         buffImage,
-        target.x - globalSize.entitySize / 2 + i * globalSize.buffIconGap,
-        target.y - globalSize.entitySize / 2,
+        buffX,
+        buffY,
         globalSize.buffIconSize,
         globalSize.buffIconSize
       );
     }
+    else {
+      fill(50);
+      circle(buffX, buffY, globalSize.buffIconSize);
+    }
+
+    fill(255);
+    stroke(0);
+    strokeWeight(globalSize.normalStrokeWeight);
+    textAlign(CENTER, CENTER);
+    textSize(globalSize.commonTextSize * 0.7);
+    text(buff.stacks, buffX + globalSize.buffIconSize * 0.35, buffY + globalSize.buffIconSize * 0.35);
+    noStroke();
   }
 }
 
@@ -997,21 +1317,46 @@ function drawPlayer() {
   drawPlayerHP(playerX, playerY);
   changeOfPlayerHP();
 
-  fill(255);
-  textAlign(LEFT, TOP);
-  textSize(globalSize.commonTextSize);
-  text(`Block: ${player.block}`, globalSize.screenPadding, globalSize.upperPartHeight + globalSize.lineGap * 3);
+  if (player.block > 0) {
+  imageMode(CENTER);
 
+  image(
+    images.blockIcon,
+    playerX,
+    playerY - globalSize.entitySize * 0.75,
+    globalSize.energyIconSize,
+    globalSize.energyIconSize
+  );
+
+  fill(255);
+  textAlign(CENTER, CENTER);
+  textSize(globalSize.commonTextSize);
+  text(
+    player.block,
+    playerX,
+    playerY - globalSize.entitySize * 0.75
+  );
+}
   drawEnergy();
 }
 
 function drawEnergy() {
-  fill(255); 
-  circle(globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize);
-  fill(0);
+  if (images.energyIcon) {
+    imageMode(CENTER);
+    image(images.energyIcon, globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize, globalSize.energyIconSize);
+  }
+  else {
+    fill(255); 
+    circle(globalSize.energyIconX, globalSize.energyIconY, globalSize.energyIconSize);
+  }
+
+  fill(255);
+  stroke(0);
+  strokeWeight(globalSize.normalStrokeWeight);
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
   text(`${player.energy} / ${player.maxEnergy}`, globalSize.energyIconX, globalSize.energyIconY);
+  noStroke();
 } 
 
 function drawPlayerHP(x, y) {
@@ -1041,7 +1386,8 @@ function checkIfCombatEnded() {
   if (player.hp <= 0) {
     gamemode = 'PlayerDefeated';
   }
-  else if (enemies.length === 0) {
+  else if (enemies.length === 0 && gamemode === 'combat') {
+    playSound('victory');
     gamemode = 'reward';
     generateRewards();
   }
@@ -1484,15 +1830,25 @@ function drawRewardScreen() {
 
 function drawSkipButton() {
   push();
-  fill(180);
-  stroke(0);
+  fill(180, 165, 135, 230);
+  stroke(45, 35, 25);
   strokeWeight(globalSize.normalStrokeWeight);
   rect(skipButtonX, skipButtonY, skipButtonWidth, skipButtonHeight, globalSize.buttonCornerRadius);
-  fill(0);
+
+  let iconSize = skipButtonHeight * 0.7;
+  let iconX = skipButtonX + iconSize * 0.85;
+  let iconY = skipButtonY + skipButtonHeight / 2;
+
+  if (images.skipIcon) {
+    imageMode(CENTER);
+    image(images.skipIcon, iconX, iconY, iconSize, iconSize);
+  }
+
+  fill(20);
   noStroke();
   textAlign(CENTER, CENTER);
   textSize(globalSize.commonTextSize);
-  text('Skip (E)', skipButtonX + skipButtonWidth / 2, skipButtonY + skipButtonHeight / 2);
+  text('Skip (E)', skipButtonX + skipButtonWidth * 0.58, skipButtonY + skipButtonHeight / 2);
   pop();
 }
 
@@ -1890,8 +2246,6 @@ function getRewardIndexAtMouse() {
 }
 
 function claimReward(index) {
-  playSound('reward');
-
   if (index < 0 || index >= rewardOptions.length) {
     return;
   }
@@ -1900,12 +2254,15 @@ function claimReward(index) {
 
   if (reward.type === 'card') {
     deck.push(reward.cardId);
+    playSound('cardDraw');
   }
   else if (reward.type === 'coin') {
     player.money += reward.amount;
+    playSound('coin');
   }
   else if (reward.type === 'potion') {
     potionBag.push(reward);
+    playSound('heal');
   }
 
   rewardOptions = [];
